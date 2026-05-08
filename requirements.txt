@@ -1,0 +1,6 @@
+python-escpos==3.1
+pyserial==3.5
+pyodbc
+pywin32
+ttkthemes==3.2.2
+pyinstaller

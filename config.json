@@ -1,0 +1,68 @@
+{
+  "conexion_odbc": {
+    "server": "10.153.37.57\\pos",
+    "database": "NPV",
+    "trusted_connection": false,
+    "username": "sa",
+    "password": "oxelosund80",
+    "driver": "{ODBC Driver 17 for SQL Server}"
+  },
+  "impresora": {
+    "modo": "named",
+    "printer_name": "OneNote (Desktop)"
+  },
+  "escpos": {
+    "mode": "auto",
+    "serial": {
+      "com": "COM3",
+      "baudrate": 9600,
+      "bytesize": 8,
+      "parity": "N",
+      "stopbits": 1,
+      "timeout": 1
+    },
+    "usb": {
+      "vendor_id": 0,
+      "product_id": 0,
+      "interface": 0,
+      "in_ep": 130,
+      "out_ep": 1
+    },
+    "network": {
+      "ip": "192.168.1.50",
+      "port": 9100
+    }
+  },
+  "tamaños": {
+    "size_producto": [
+      2,
+      2
+    ],
+    "size_precio": [
+      3,
+      3
+    ],
+    "size_codigos": [
+      2,
+      2
+    ],
+    "size_vigencia": [
+      1,
+      1
+    ]
+  },
+  "espaciados": {
+    "espacio_arriba_precio": 1,
+    "espacio_abajo_precio": 1
+  },
+  "tema": "circlek",
+  "corte": "partial",
+  "vigencia_default": "Vigente {MES_ABR} {YYYY}",
+  "preferencias": {
+    "auto_print_on_scan": true,
+    "mostrar_logo": true,
+    "formato_papel_mm": 80,
+    "area_util_mm": 76,
+    "fuente_predeterminada": "Arial Bold"
+  }
+}
