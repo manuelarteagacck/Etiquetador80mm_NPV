@@ -8,8 +8,8 @@
     "driver": "{ODBC Driver 17 for SQL Server}"
   },
   "impresora": {
-    "modo": "named",
-    "printer_name": "OneNote (Desktop)"
+    "modo": "default",
+    "printer_name": ""
   },
   "escpos": {
     "mode": "auto",
