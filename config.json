@@ -1,6 +1,6 @@
 {
   "conexion_odbc": {
-    "server": "10.153.37.57\\pos",
+    "server": ".\\POS",
     "database": "NPV",
     "trusted_connection": false,
     "username": "sa",
@@ -8,8 +8,8 @@
     "driver": "{ODBC Driver 17 for SQL Server}"
   },
   "impresora": {
-    "modo": "default",
-    "printer_name": ""
+    "modo": "named",
+    "printer_name": "POS-80"
   },
   "escpos": {
     "mode": "auto",
