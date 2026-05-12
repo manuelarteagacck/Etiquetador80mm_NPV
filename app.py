@@ -23,13 +23,14 @@ import re
 import sys
 import textwrap
 import datetime
+import traceback
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any, List
 
 APP_TITLE = "Etiquetador 80mm - TIENDA NPV"
 CONFIG_FILENAME = "config.json"
-PROMO_BACKGROUND_FILENAME = "back3.jpg"
-PROMO_TEMPLATE_SIZE = (1228, 819)
+PROMO_BACKGROUND_FILENAME = "back4.jpg"
+PROMO_TEMPLATE_SIZE = (1268, 793)
 
 
 def _missing_dependency_exit(module_name: str, package_name: str) -> None:
@@ -102,11 +103,11 @@ DEFAULT_CONFIG = {
     "conexion_odbc": {
         # Ejemplo con autenticación integrada:
         # "dsn": "",  # si usas DSN
-        "server": "MI_SERVIDOR_SQL",
+        "server": ".\\POS",
         "database": "NPV",
-        "trusted_connection": True,
-        "username": "",
-        "password": "",
+        "trusted_connection": False,
+        "username": "sa",
+        "password": "oxelosund80",
         "driver": "{ODBC Driver 17 for SQL Server}"
     },
     "impresora": {
@@ -155,11 +156,12 @@ def resolve_vigencia_template(tpl: str) -> str:
 
 
 def load_config() -> dict:
-    if not os.path.exists(CONFIG_FILENAME):
-        with open(CONFIG_FILENAME, "w", encoding="utf-8") as f:
+    path = config_path()
+    if not os.path.exists(path):
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_CONFIG, f, ensure_ascii=False, indent=2)
         return json.loads(json.dumps(DEFAULT_CONFIG))
-    with open(CONFIG_FILENAME, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     # merge simple (rellena faltantes con defaults)
     def deep_merge(a, b):
@@ -174,13 +176,48 @@ def load_config() -> dict:
 
 
 def save_config(cfg: dict):
-    with open(CONFIG_FILENAME, "w", encoding="utf-8") as f:
+    with open(config_path(), "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
 
 
 def resource_path(filename: str) -> str:
     base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, filename)
+
+
+def app_base_path() -> str:
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def config_path() -> str:
+    return os.path.join(app_base_path(), CONFIG_FILENAME)
+
+
+def log_path() -> str:
+    return os.path.join(app_base_path(), "log.txt")
+
+
+def _sanitize_connection_string(conn_str: str) -> str:
+    return re.sub(r"(PWD=)[^;]*", r"\1***", conn_str or "", flags=re.IGNORECASE)
+
+
+def write_log(context: str, exc: Exception = None, extra: str = "") -> None:
+    try:
+        lines = [
+            "=" * 80,
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            context,
+        ]
+        if extra:
+            lines.append(extra)
+        if exc is not None:
+            lines.append("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)).rstrip())
+        with open(log_path(), "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    except Exception:
+        pass
 
 
 def get_promo_background_path() -> str:
@@ -318,6 +355,7 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
         INNER JOIN NPV.dbo.NPVFDPromocionEncabezado pe ON pe.CLAVE = pl.CLAVE
         WHERE pl.CLAVEARTICULO = a.ARTICULO
           AND pe.VIGENCIAFINAL >= GETDATE()
+          AND pe.VIGENCIAINICIO >= GETDATE()
           AND pe.CLASE = 'Z002'
         ORDER BY pl.CLAVE DESC
     ) promo
@@ -352,6 +390,15 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
             results.append(item)
 
     except Exception as e:
+        try:
+            conn_info = _sanitize_connection_string(_build_connection_string(cfg))
+        except Exception:
+            conn_info = "No se pudo construir connection string."
+        write_log(
+            "ERROR search_items",
+            e,
+            extra=f"term={term}\nconnection={conn_info}",
+        )
         print(f"[ERROR search_items] {e}")
         return []
     finally:
@@ -445,41 +492,40 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -
     hDC.SetBkMode(win32con.TRANSPARENT)
     hDC.SetTextColor(0x111111) # Color oscuro para el texto
 
-    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(108), "weight": win32con.FW_BOLD})
-    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(108), "weight": win32con.FW_BOLD})
-    hDC.SelectObject(font_now)
-    hDC.DrawText(p_ahora_int, rect(760, 35, 1005, 130), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-    hDC.SelectObject(font_now_dec)
-    hDC.DrawText(p_ahora_dec, rect(1045, 35, 1185, 130), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-
-    hDC.SetTextColor(0x0000FF)
-    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(162), "weight": win32con.FW_BOLD})
-    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(162), "weight": win32con.FW_BOLD})
+    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(106), "weight": win32con.FW_BOLD})
+    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(106), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_savings)
-    hDC.DrawText(p_ahorra_int, rect(270, 251, 920, 426), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahorra_int, rect(760, 35, 1055, 135), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_savings_dec)
-    hDC.DrawText(p_ahorra_dec, rect(970, 251, 1185, 426), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahorra_dec, rect(1110, 35, 1205, 135), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+
+    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(158), "weight": win32con.FW_BOLD})
+    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(158), "weight": win32con.FW_BOLD})
+    hDC.SelectObject(font_now)
+    hDC.DrawText(p_ahora_int, rect(285, 205, 940, 380), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.SelectObject(font_now_dec)
+    hDC.DrawText(p_ahora_dec, rect(1015, 205, 1180, 380), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     hDC.SetTextColor(0x111111)
-    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(62), "weight": win32con.FW_BOLD})
-    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(62), "weight": win32con.FW_BOLD})
+    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(56), "weight": win32con.FW_BOLD})
+    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(56), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_before)
-    hDC.DrawText(p_antes_int, rect(735, 600, 965, 675), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_antes_int, rect(780, 565, 990, 635), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_before_dec)
-    hDC.DrawText(p_antes_dec, rect(1020, 600, 1125, 675), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_antes_dec, rect(1045, 565, 1145, 635), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     desc = (item_dict.get("DESCRIPCION") or "").upper()
     if desc:
-        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(54), "weight": win32con.FW_BOLD})
+        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(46), "weight": win32con.FW_BOLD})
         hDC.SelectObject(font_desc)
-        hDC.DrawText(desc, rect(105, 475, 1125, 525), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+        hDC.DrawText(desc, rect(60, 425, 1210, 475), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     if promo_terminos:
-        font_terms = win32ui.CreateFont({"name": "Arial", "height": font_height(40), "weight": win32con.FW_BOLD})
+        font_terms = win32ui.CreateFont({"name": "Arial", "height": font_height(36), "weight": win32con.FW_BOLD})
         hDC.SelectObject(font_terms)
-        hDC.DrawText(promo_terminos, rect(194, 705, 1165, 742), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+        hDC.DrawText(promo_terminos, rect(85, 695, 1185, 728), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
         if promo_terminos2:
-            hDC.DrawText(promo_terminos2, rect(194, 744, 1165, 805), win32con.DT_LEFT | win32con.DT_WORDBREAK)
+            hDC.DrawText(promo_terminos2, rect(85, 730, 1185, 780), win32con.DT_LEFT | win32con.DT_WORDBREAK)
 
     return True
 
@@ -910,68 +956,68 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             promo_terminos = self.item.get("PROMO_TERMINOS") or ""
             promo_terminos2 = self.item.get("PROMO_TERMINOS2") or ""
 
-            # PRECIO NUEVO
-            self.canvas.create_text(
-                cx(1005), cy(82), text=p_ahora_int, anchor="e",
-                font=("Arial", int(108 * sy), "bold"), fill="#111111"
-            )
-            self.canvas.create_text(
-                cx(1045), cy(82), text=p_ahora_dec, anchor="w",
-                font=("Arial", int(108 * sy), "bold"), fill="#111111"
-            )
-
             # AHORRA
             self.canvas.create_text(
-                cx(920), cy(338), text=p_ahorra_int, anchor="e",
-                font=("Arial", int(162 * sy), "bold"), fill="#E30613"
+                cx(1055), cy(85), text=p_ahorra_int, anchor="e",
+                font=("Arial", int(106 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(970), cy(338), text=p_ahorra_dec, anchor="w",
-                font=("Arial", int(162 * sy), "bold"), fill="#E30613"
+                cx(1110), cy(85), text=p_ahorra_dec, anchor="w",
+                font=("Arial", int(106 * sy), "bold"), fill="#111111"
+            )
+
+            # PRECIO NUEVO
+            self.canvas.create_text(
+                cx(940), cy(292), text=p_ahora_int, anchor="e",
+                font=("Arial", int(158 * sy), "bold"), fill="#111111"
+            )
+            self.canvas.create_text(
+                cx(1015), cy(292), text=p_ahora_dec, anchor="w",
+                font=("Arial", int(158 * sy), "bold"), fill="#111111"
             )
 
             # PRECIO ANTERIOR
             self.canvas.create_text(
-                cx(965), cy(638), text=p_antes_int, anchor="e",
-                font=("Arial", int(62 * sy), "bold"), fill="#111111"
+                cx(990), cy(600), text=p_antes_int, anchor="e",
+                font=("Arial", int(56 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(1020), cy(638), text=p_antes_dec, anchor="w",
-                font=("Arial", int(62 * sy), "bold"), fill="#111111"
+                cx(1045), cy(600), text=p_antes_dec, anchor="w",
+                font=("Arial", int(56 * sy), "bold"), fill="#111111"
             )
 
             if desc:
                 self.canvas.create_text(
-                    cx(615),
-                    cy(500),
+                    cx(635),
+                    cy(450),
                     text=desc,
-                    width=cx(1020),
+                    width=cx(1150),
                     anchor="center",
                     justify="center",
-                    font=("Arial", max(10, int(54 * sy)), "bold"),
+                    font=("Arial", max(10, int(46 * sy)), "bold"),
                     fill="#111111",
                 )
 
             if promo_terminos:
                 self.canvas.create_text(
-                    cx(194),
-                    cy(705),
+                    cx(85),
+                    cy(695),
                     text=promo_terminos,
-                    width=cx(971),
+                    width=cx(1100),
                     anchor="nw",
                     justify="left",
-                    font=("Arial", max(10, int(40 * sy)), "bold"),
+                    font=("Arial", max(9, int(36 * sy)), "bold"),
                     fill="#111111",
                 )
                 if promo_terminos2:
                     self.canvas.create_text(
-                        cx(194),
-                        cy(744),
+                        cx(85),
+                        cy(730),
                         text=promo_terminos2,
-                        width=cx(971),
+                        width=cx(1100),
                         anchor="nw",
                         justify="left",
-                        font=("Arial", max(10, int(40 * sy)), "bold"),
+                        font=("Arial", max(9, int(36 * sy)), "bold"),
                         fill="#111111",
                     )
 
@@ -1307,6 +1353,7 @@ class App(ThemedTk):
                 ResultSelectionWindow(self, results, self._show_item_in_preview)
 
         except Exception as e:
+            write_log("ERROR on_unified_search", e, extra=f"term={term}")
             messagebox.showerror(APP_TITLE, f"Error en la búsqueda: {e}")
         
         # Clear search box after search
@@ -1519,9 +1566,13 @@ class App(ThemedTk):
 # Entry point
 # ==============================
 def main():
-    app = App()
-    app.protocol("WM_DELETE_WINDOW", app.on_close)
-    app.mainloop()
+    try:
+        app = App()
+        app.protocol("WM_DELETE_WINDOW", app.on_close)
+        app.mainloop()
+    except Exception as e:
+        write_log("ERROR main", e)
+        raise
 
 
 if __name__ == "__main__":
