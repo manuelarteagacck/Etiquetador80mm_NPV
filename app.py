@@ -356,7 +356,6 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
         WHERE pl.CLAVEARTICULO = a.ARTICULO
           AND pl.CANTIDAD = 1
           AND pe.VIGENCIAFINAL >= GETDATE()
-          AND pe.VIGENCIAINICIO >= GETDATE()
           AND pe.CLASE = 'Z002'
         ORDER BY pl.CLAVE DESC
     ) promo
@@ -376,12 +375,14 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
 
         for row in rows:
             fecha_vigencia = row.FECHAINICIO.strftime("%d/%m/%Y") if row.FECHAINICIO else datetime.date.today().strftime("%d/%m/%Y")
+            precio_venta = _format_price(row.PRECIO)
+            precio_especial = _format_price(row.PRECIO_ESPECIAL) or precio_venta
             
             item = {
                 "ARTICULO": str(row.ARTICULO).strip(),
                 "DESCRIPCION": str(row.DESCRIPCION or "").strip(),
-                "PRECIO": _format_price(row.PRECIO),
-                "PRECIO_ESPECIAL": _format_price(row.PRECIO_ESPECIAL),
+                "PRECIO": precio_venta,
+                "PRECIO_ESPECIAL": precio_especial,
                 "TIENE_PRECIO_ESPECIAL": bool(row.TIENE_PRECIO_ESPECIAL),
                 "UPC": _normalize_upc_digits(row.UPC or ""),
                 "VIGENCIA": f"Valido a partir de: {fecha_vigencia} Aplican TyC",
@@ -750,6 +751,8 @@ def build_label_text(item_dict: Dict[str, Any], config: dict) -> Dict[str, Any]:
     if not precio:
         # Precio inválido
         precio = ""
+    if not precio_especial:
+        precio_especial = precio
 
     # Vigencia: usa la que viene del item si existe, si no, la de por defecto.
     vigencia = item_dict.get("VIGENCIA")
@@ -1239,9 +1242,8 @@ class App(ThemedTk):
         self.entry_upc.grid(row=r, column=1, sticky="w", padx=pad_x, pady=pad_y)
         self.entry_upc.configure(state="readonly")
 
-        ttk.Label(preview_frame, text="Vigencia:").grid(row=r, column=2, sticky="e", padx=pad_x, pady=pad_y)
+        # Campo interno: se mantiene la vigencia para impresion, pero ya no se captura en pantalla.
         self.entry_vigencia = ttk.Entry(preview_frame, width=25)
-        self.entry_vigencia.grid(row=r, column=3, sticky="w", padx=pad_x, pady=pad_y)
 
         r += 1
         ttk.Label(preview_frame, text="Copias (1-20):").grid(row=r, column=0, sticky="w", padx=pad_x, pady=pad_y)
@@ -1528,6 +1530,8 @@ class App(ThemedTk):
         precio_fmt = _format_price(precio_digits) if precio_digits else ""
         precio_especial_digits = re.sub(r"[^0-9.]", "", precio_especial_raw)
         precio_especial_fmt = _format_price(precio_especial_digits) if precio_especial_digits else ""
+        if not precio_especial_fmt:
+            precio_especial_fmt = precio_fmt
 
         articulo = (self.entry_codigo.get() or "").strip()
         upc = _normalize_upc_digits(self.entry_upc.get() or "")
