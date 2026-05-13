@@ -1,20 +1,13 @@
 import pyodbc
-import json
 import re
+from app import _build_connection_string, _sanitize_connection_string, load_config
 
 # Cargar configuración
-with open("config.json", "r", encoding="utf-8") as f:
-    cfg = json.load(f)
-
-conn_str = (
-    f"DRIVER={cfg['conexion_odbc']['driver']};"
-    f"SERVER={cfg['conexion_odbc']['server']};"
-    f"DATABASE={cfg['conexion_odbc']['database']};"
-    f"UID={cfg['conexion_odbc']['username']};"
-    f"PWD={cfg['conexion_odbc']['password']};"
-)
+cfg = load_config()
+conn_str = _build_connection_string(cfg)
 
 print("Probando conexión...")
+print(_sanitize_connection_string(conn_str))
 try:
     conn = pyodbc.connect(conn_str, timeout=5)
     print("✅ Conexión exitosa a la base de datos NPV.")

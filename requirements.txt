@@ -5,3 +5,4 @@ pywin32
 ttkthemes==3.2.2
 pyinstaller
 Pillow
+cryptography

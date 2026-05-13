@@ -29,6 +29,7 @@ from typing import Optional, Dict, Any, List
 
 APP_TITLE = "Etiquetador 80mm - TIENDA NPV"
 CONFIG_FILENAME = "config.json"
+FERNET_KEY_FILENAME = "config.key"
 PROMO_BACKGROUND_FILENAME = "back4.jpg"
 PROMO_TEMPLATE_SIZE = (1268, 793)
 
@@ -76,6 +77,14 @@ except ModuleNotFoundError as exc:
         _missing_dependency_exit(exc.name, "pyodbc")
     raise
 
+# --- Cifrado de secretos ---
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+except ModuleNotFoundError as exc:
+    if exc.name == "cryptography":
+        _missing_dependency_exit(exc.name, "cryptography")
+    raise
+
 # --- UI ---
 import tkinter as tk
 from tkinter import ttk, messagebox, font
@@ -94,6 +103,7 @@ except ModuleNotFoundError as exc:
 
 APP_TITLE = "Etiquetador 80mm — TIENDA NPV"
 CONFIG_FILENAME = "config.json"
+FERNET_KEY_FILENAME = "config.key"
 
 
 # =============================
@@ -107,7 +117,7 @@ DEFAULT_CONFIG = {
         "database": "NPV",
         "trusted_connection": False,
         "username": "sa",
-        "password": "oxelosund80",
+        "password_encrypted": "",
         "driver": "{ODBC Driver 17 for SQL Server}"
     },
     "impresora": {
@@ -158,9 +168,10 @@ def resolve_vigencia_template(tpl: str) -> str:
 def load_config() -> dict:
     path = config_path()
     if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(DEFAULT_CONFIG, f, ensure_ascii=False, indent=2)
-        return json.loads(json.dumps(DEFAULT_CONFIG))
+        cfg = json.loads(json.dumps(DEFAULT_CONFIG))
+        _hydrate_db_password(cfg)
+        save_config(cfg)
+        return cfg
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     # merge simple (rellena faltantes con defaults)
@@ -172,12 +183,17 @@ def load_config() -> dict:
                 if isinstance(v, dict) and isinstance(a[k], dict):
                     deep_merge(a[k], v)
         return a
-    return deep_merge(data, json.loads(json.dumps(DEFAULT_CONFIG)))
+    cfg = deep_merge(data, json.loads(json.dumps(DEFAULT_CONFIG)))
+    password_migrated = _hydrate_db_password(cfg)
+    if password_migrated:
+        save_config(cfg)
+    return cfg
 
 
 def save_config(cfg: dict):
+    disk_cfg = _config_for_disk(cfg)
     with open(config_path(), "w", encoding="utf-8") as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
+        json.dump(disk_cfg, f, ensure_ascii=False, indent=2)
 
 
 def resource_path(filename: str) -> str:
@@ -195,8 +211,89 @@ def config_path() -> str:
     return os.path.join(app_base_path(), CONFIG_FILENAME)
 
 
+def fernet_key_path() -> str:
+    return os.path.join(app_base_path(), FERNET_KEY_FILENAME)
+
+
 def log_path() -> str:
     return os.path.join(app_base_path(), "log.txt")
+
+
+def _load_or_create_fernet_key() -> bytes:
+    path = fernet_key_path()
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            key = f.read().strip()
+        try:
+            Fernet(key)
+        except Exception as exc:
+            raise ValueError(f"La llave Fernet no es valida: {path}") from exc
+        return key
+
+    key = Fernet.generate_key()
+    with open(path, "wb") as f:
+        f.write(key)
+    try:
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
+    return key
+
+
+def _get_fernet() -> Fernet:
+    return Fernet(_load_or_create_fernet_key())
+
+
+def _encrypt_secret(value: str) -> str:
+    if not value:
+        return ""
+    return _get_fernet().encrypt(str(value).encode("utf-8")).decode("ascii")
+
+
+def _decrypt_secret(token: str) -> str:
+    if not token:
+        return ""
+    try:
+        return _get_fernet().decrypt(str(token).encode("ascii")).decode("utf-8")
+    except InvalidToken as exc:
+        raise ValueError(
+            "No se pudo descifrar conexion_odbc.password_encrypted. "
+            f"Verifica que {FERNET_KEY_FILENAME} corresponda a este config.json."
+        ) from exc
+
+
+def _hydrate_db_password(cfg: dict) -> bool:
+    c = cfg.setdefault("conexion_odbc", {})
+    had_plain_password = "password" in c
+    plain_password = c.get("password")
+    encrypted_password = c.get("password_encrypted")
+
+    if had_plain_password and plain_password:
+        c["password"] = str(plain_password)
+        return True
+    if encrypted_password:
+        c["password"] = _decrypt_secret(encrypted_password)
+    else:
+        c["password"] = ""
+    return had_plain_password
+
+
+def _config_for_disk(cfg: dict) -> dict:
+    disk_cfg = json.loads(json.dumps(cfg))
+    c = disk_cfg.setdefault("conexion_odbc", {})
+    password = c.pop("password", None)
+    if password:
+        existing_token = c.get("password_encrypted")
+        if existing_token:
+            try:
+                if _decrypt_secret(existing_token) == str(password):
+                    return disk_cfg
+            except ValueError:
+                pass
+        c["password_encrypted"] = _encrypt_secret(str(password))
+    else:
+        c["password_encrypted"] = c.get("password_encrypted", "")
+    return disk_cfg
 
 
 def _sanitize_connection_string(conn_str: str) -> str:
@@ -532,7 +629,7 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -
     return True
 
 
-def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1):
+def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, show_errors: bool = True):
     """
     Imprime la etiqueta final usando GDI, basado en el área de impresión real.
     """
@@ -630,10 +727,13 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1):
         print("[INFO] Se envió el trabajo de impresión final.")
     except Exception as e:
         print(f"[ERROR] Falló la impresión GDI: {e}")
-        messagebox.showerror(APP_TITLE, f"Error de GDI: {e}")
+        if show_errors:
+            messagebox.showerror(APP_TITLE, f"Error de GDI: {e}")
+        else:
+            write_log("ERROR print_label_gdi", e)
 
 
-def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int = 1):
+def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int = 1, show_errors: bool = True):
     """
     Imprime la etiqueta en formato angosto.
     """
@@ -729,7 +829,10 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
         print("[INFO] Se envió el trabajo de impresión (individual) final.")
     except Exception as e:
         print(f"[ERROR] Falló la impresión GDI (individual): {e}")
-        messagebox.showerror(APP_TITLE, f"Error de GDI (individual): {e}")
+        if show_errors:
+            messagebox.showerror(APP_TITLE, f"Error de GDI (individual): {e}")
+        else:
+            write_log("ERROR print_label_gdi_small", e)
 
 
 # ==============================
@@ -1341,23 +1444,27 @@ class App(ThemedTk):
         if not term:
             return
 
+        auto_print = self.auto_print_var.get()
         try:
             results = search_items(term, self.config_data)
             
             if not results:
-                messagebox.showinfo(APP_TITLE, "No se encontraron artículos.")
+                if not auto_print:
+                    messagebox.showinfo(APP_TITLE, "No se encontraron artículos.")
                 self._clear_preview()
             elif len(results) == 1:
-                self._show_item_in_preview(results[0])
-                if self.auto_print_var.get() and results[0].get("TIENE_PRECIO_ESPECIAL"):
-                    self.on_print_click()
+                self._show_item_in_preview(results[0], suppress_no_special_message=auto_print)
+                if auto_print:
+                    self._print_current_item_silent()
             else:
-                # Multiple results, open selection window
-                ResultSelectionWindow(self, results, self._show_item_in_preview)
+                if not auto_print:
+                    # Multiple results, open selection window
+                    ResultSelectionWindow(self, results, self._show_item_in_preview)
 
         except Exception as e:
             write_log("ERROR on_unified_search", e, extra=f"term={term}")
-            messagebox.showerror(APP_TITLE, f"Error en la búsqueda: {e}")
+            if not auto_print:
+                messagebox.showerror(APP_TITLE, f"Error en la búsqueda: {e}")
         
         # Clear search box after search
         self.entry_search.delete(0, tk.END)
@@ -1429,6 +1536,32 @@ class App(ThemedTk):
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error al imprimir: {e}")
 
+    def _print_current_item_silent(self):
+        item = self._collect_item_from_preview()
+        if not item.get("DESCRIPCION") or not item.get("PRECIO"):
+            return
+
+        if not item.get("TIENE_PRECIO_ESPECIAL"):
+            item["PRECIO_ESPECIAL"] = ""
+            item["PROMO_TERMINOS"] = ""
+            item["PROMO_TERMINOS2"] = ""
+
+        try:
+            price_digits = re.sub(r"[^0-9.]", "", item["PRECIO"])
+            if not price_digits:
+                return
+            copies = int(self.spin_copias.get())
+            if copies < 1 or copies > 20:
+                return
+
+            self._update_config_from_ui()
+            if self.individual_print_var.get():
+                print_label_gdi_small(item, self.config_data, copies=copies, show_errors=False)
+            else:
+                print_label_gdi(item, self.config_data, copies=copies, show_errors=False)
+        except Exception as e:
+            write_log("ERROR auto_print", e, extra=f"item={item}")
+
     def on_preview_print_click(self):
         item = self._collect_item_from_preview()
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
@@ -1484,14 +1617,14 @@ class App(ThemedTk):
         self.entry_vigencia.insert(0, resolve_vigencia_template(self.config_data.get("vigencia_default", DEFAULT_CONFIG["vigencia_default"])))
 
 
-    def _show_item_in_preview(self, item: Optional[Dict[str, Any]]):
+    def _show_item_in_preview(self, item: Optional[Dict[str, Any]], suppress_no_special_message: bool = False):
         if not item: # This can happen if the selection window is closed
             return
             
         # Build text for preview
         built = build_label_text(item, self.config_data)
         self.current_built_item = built
-        if not built.get("TIENE_PRECIO_ESPECIAL"):
+        if not suppress_no_special_message and not built.get("TIENE_PRECIO_ESPECIAL"):
             messagebox.showinfo(APP_TITLE, "No existen precios especiales actualizados.")
 
         self._unlock_preview_fields()
