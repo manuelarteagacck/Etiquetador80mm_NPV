@@ -354,6 +354,7 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
         FROM NPV.dbo.NPVFDPromocionLineas pl
         INNER JOIN NPV.dbo.NPVFDPromocionEncabezado pe ON pe.CLAVE = pl.CLAVE
         WHERE pl.CLAVEARTICULO = a.ARTICULO
+          AND pl.CANTIDAD = 1
           AND pe.VIGENCIAFINAL >= GETDATE()
           AND pe.VIGENCIAINICIO >= GETDATE()
           AND pe.CLASE = 'Z002'
