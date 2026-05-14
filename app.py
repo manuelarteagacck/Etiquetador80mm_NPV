@@ -545,6 +545,15 @@ def _get_selected_printer_name(cfg: dict) -> str:
     return cfg.get("impresora", {}).get("printer_name") or ""
 
 
+def _item_for_individual_label(item_dict: Dict[str, Any]) -> Dict[str, Any]:
+    item = dict(item_dict or {})
+    item["PRECIO_ESPECIAL"] = ""
+    item["TIENE_PRECIO_ESPECIAL"] = False
+    item["PROMO_TERMINOS"] = ""
+    item["PROMO_TERMINOS2"] = ""
+    return item
+
+
 def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -> bool:
     if not item_dict.get("PRECIO_ESPECIAL") or Image is None or ImageWin is None:
         return False
@@ -737,6 +746,7 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
     """
     Imprime la etiqueta en formato angosto.
     """
+    item_dict = _item_for_individual_label(item_dict)
     printer_name = _get_selected_printer_name(config)
     if not printer_name:
         raise RuntimeError("No se pudo determinar la impresora a usar.")
@@ -752,11 +762,6 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
         for i in range(copies):
             hDC.StartDoc(f"Etiqueta NPV Individual ({i+1}/{copies})")
             hDC.StartPage()
-
-            if draw_promo_label_gdi(hDC, item_dict, printable_width):
-                hDC.EndPage()
-                hDC.EndDoc()
-                continue
 
             y_pos = 20 # Margen superior (como el original)
             horizontal_margin = 40 # Margen horizontal más grande para hacerlo más angosto
@@ -987,11 +992,11 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         self.configure(bg="#F0F0F0")
         self.resizable(False, False)
 
-        self.item = item
+        self.item = _item_for_individual_label(item) if individual else item
         self.individual = individual
 
         label_width = 500 if individual else 660
-        if item.get("PRECIO_ESPECIAL"):
+        if self.item.get("PRECIO_ESPECIAL"):
             label_height = int(label_width * PROMO_TEMPLATE_SIZE[1] / PROMO_TEMPLATE_SIZE[0])
         else:
             label_height = 285
@@ -1516,7 +1521,7 @@ class App(ThemedTk):
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede imprimir sin Producto y Precio.")
             return
-        if not self._validate_special_price(item):
+        if not self.individual_print_var.get() and not self._validate_special_price(item):
             return
         try:
             # Validaciones
@@ -1532,7 +1537,6 @@ class App(ThemedTk):
                 print_label_gdi_small(item, self.config_data, copies=copies)
             else:
                 print_label_gdi(item, self.config_data, copies=copies)
-            messagebox.showinfo(APP_TITLE, "Impresión enviada.")
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error al imprimir: {e}")
 
@@ -1567,7 +1571,7 @@ class App(ThemedTk):
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede mostrar la vista previa sin Producto y Precio.")
             return
-        if not self._validate_special_price(item):
+        if not self.individual_print_var.get() and not self._validate_special_price(item):
             return
         try:
             price_digits = re.sub(r"[^0-9.]", "", item["PRECIO"])
