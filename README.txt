@@ -9,7 +9,7 @@ Instrucciones:
    "password" en texto plano, la app la migra automáticamente a
    "password_encrypted" con Fernet y crea config.key junto al config.
 3. Ejecutar: python app.py
-4. (Opcional) Empaquetar: pyinstaller -F --add-data "back4.jpg;." -n Etiquetador80mm app.py
+4. (Opcional) Empaquetar: pyinstaller -F --add-data "back5.png;." -n Etiquetador80mm app.py
 
 Importante: conserva config.key junto con config.json. Sin esa llave no se puede
 descifrar password_encrypted.

@@ -2,7 +2,7 @@
   "conexion_odbc": {
     "server": ".\\POS",
     "database": "NPV",
-    "trusted_connection": false,
+    "trusted_connection": true,
     "username": "sa",
     "driver": "{ODBC Driver 17 for SQL Server}",
     "password_encrypted": "gAAAAABqBJZsgyjgAaqeNn6KEqJvk1Yg9499qThuvRMng_lCMQVbp5wsgMjSkXVirsuAjXQp2IJY_4oQKoitwXL2ecLGqzpQcA=="

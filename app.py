@@ -30,8 +30,8 @@ from typing import Optional, Dict, Any, List
 APP_TITLE = "Etiquetador 80mm - TIENDA NPV"
 CONFIG_FILENAME = "config.json"
 FERNET_KEY_FILENAME = "config.key"
-PROMO_BACKGROUND_FILENAME = "back4.jpg"
-PROMO_TEMPLATE_SIZE = (1268, 793)
+PROMO_BACKGROUND_FILENAME = "back5.png"
+PROMO_TEMPLATE_SIZE = (1585, 992)
 
 
 def _missing_dependency_exit(module_name: str, package_name: str) -> None:
@@ -381,6 +381,19 @@ def _price_to_float(value) -> Optional[float]:
     except Exception:
         return None
 
+
+def _format_currency(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "$0.00"
+    if text.startswith("$"):
+        return text
+    number = _price_to_float(text)
+    if number is None:
+        return f"${text}"
+    return f"${number:.2f}"
+
+
 def _split_price(value) -> tuple:
     """Devuelve (entero, decimales) de un valor de precio."""
     v = _price_to_float(value)
@@ -597,43 +610,45 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -
     promo_terminos = item_dict.get("PROMO_TERMINOS", "")
     promo_terminos2 = item_dict.get("PROMO_TERMINOS2", "")
 
-    hDC.SetBkMode(win32con.TRANSPARENT)
     hDC.SetTextColor(0x111111) # Color oscuro para el texto
+    hDC.SetBkColor(0xFFFFFF)
+    hDC.SetBkMode(win32con.OPAQUE)
 
-    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(106), "weight": win32con.FW_BOLD})
-    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(106), "weight": win32con.FW_BOLD})
+    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(116), "weight": win32con.FW_BOLD})
+    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(116), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_savings)
-    hDC.DrawText(p_ahorra_int, rect(760, 35, 1055, 135), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahorra_int, rect(1010, 65, 1325, 205), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_savings_dec)
-    hDC.DrawText(p_ahorra_dec, rect(1110, 35, 1205, 135), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahorra_dec, rect(1390, 65, 1480, 205), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
-    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(158), "weight": win32con.FW_BOLD})
-    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(158), "weight": win32con.FW_BOLD})
+    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(192), "weight": win32con.FW_BOLD})
+    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(192), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_now)
-    hDC.DrawText(p_ahora_int, rect(285, 205, 940, 380), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahora_int, rect(365, 325, 1165, 545), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_now_dec)
-    hDC.DrawText(p_ahora_dec, rect(1015, 205, 1180, 380), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahora_dec, rect(1300, 325, 1460, 545), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
-    hDC.SetTextColor(0x111111)
-    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(56), "weight": win32con.FW_BOLD})
-    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(56), "weight": win32con.FW_BOLD})
+    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(64), "weight": win32con.FW_BOLD})
+    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(64), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_before)
-    hDC.DrawText(p_antes_int, rect(780, 565, 990, 635), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_antes_int, rect(1020, 720, 1230, 810), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_before_dec)
-    hDC.DrawText(p_antes_dec, rect(1045, 565, 1145, 635), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_antes_dec, rect(1300, 720, 1390, 810), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+
+    hDC.SetBkMode(win32con.TRANSPARENT)
 
     desc = (item_dict.get("DESCRIPCION") or "").upper()
     if desc:
-        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(46), "weight": win32con.FW_BOLD})
+        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(36), "weight": win32con.FW_BOLD})
         hDC.SelectObject(font_desc)
-        hDC.DrawText(desc, rect(60, 425, 1210, 475), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+        hDC.DrawText(desc, rect(80, 535, 1505, 590), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     if promo_terminos:
-        font_terms = win32ui.CreateFont({"name": "Arial", "height": font_height(36), "weight": win32con.FW_BOLD})
+        font_terms = win32ui.CreateFont({"name": "Arial", "height": font_height(28), "weight": win32con.FW_BOLD})
         hDC.SelectObject(font_terms)
-        hDC.DrawText(promo_terminos, rect(85, 695, 1185, 728), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+        hDC.DrawText(promo_terminos, rect(95, 865, 1490, 900), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
         if promo_terminos2:
-            hDC.DrawText(promo_terminos2, rect(85, 730, 1185, 780), win32con.DT_LEFT | win32con.DT_WORDBREAK)
+            hDC.DrawText(promo_terminos2, rect(95, 900, 1490, 960), win32con.DT_LEFT | win32con.DT_WORDBREAK)
 
     return True
 
@@ -683,8 +698,8 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
                 font_price_height = 77
                 font_price = win32ui.CreateFont({"name": "Arial", "height": font_price_height, "weight": win32con.FW_BOLD})
                 hDC.SelectObject(font_price)
-                precio = item_dict.get("PRECIO", "$0.00")
-                precio_especial = item_dict.get("PRECIO_ESPECIAL", "")
+                precio = _format_currency(item_dict.get("PRECIO", "$0.00"))
+                precio_especial = _format_currency(item_dict.get("PRECIO_ESPECIAL", "")) if item_dict.get("PRECIO_ESPECIAL") else ""
                 if precio_especial:
                     precio_base_num = _price_to_float(precio) or 0
                     precio_especial_num = _price_to_float(precio_especial) or 0
@@ -1069,67 +1084,73 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             promo_terminos2 = self.item.get("PROMO_TERMINOS2") or ""
 
             # AHORRA
+            self.canvas.create_rectangle(cx(1010), cy(65), cx(1325), cy(205), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1390), cy(65), cx(1480), cy(205), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(1055), cy(85), text=p_ahorra_int, anchor="e",
-                font=("Arial", int(106 * sy), "bold"), fill="#111111"
+                cx(1325), cy(135), text=p_ahorra_int, anchor="e",
+                font=("Arial", int(116 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(1110), cy(85), text=p_ahorra_dec, anchor="w",
-                font=("Arial", int(106 * sy), "bold"), fill="#111111"
+                cx(1390), cy(135), text=p_ahorra_dec, anchor="w",
+                font=("Arial", int(116 * sy), "bold"), fill="#111111"
             )
 
             # PRECIO NUEVO
+            self.canvas.create_rectangle(cx(365), cy(325), cx(1165), cy(545), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1300), cy(325), cx(1460), cy(545), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(940), cy(292), text=p_ahora_int, anchor="e",
-                font=("Arial", int(158 * sy), "bold"), fill="#111111"
+                cx(1165), cy(420), text=p_ahora_int, anchor="e",
+                font=("Arial", int(192 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(1015), cy(292), text=p_ahora_dec, anchor="w",
-                font=("Arial", int(158 * sy), "bold"), fill="#111111"
+                cx(1300), cy(420), text=p_ahora_dec, anchor="w",
+                font=("Arial", int(192 * sy), "bold"), fill="#111111"
             )
 
             # PRECIO ANTERIOR
+            self.canvas.create_rectangle(cx(1020), cy(720), cx(1230), cy(810), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1300), cy(720), cx(1390), cy(810), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(990), cy(600), text=p_antes_int, anchor="e",
-                font=("Arial", int(56 * sy), "bold"), fill="#111111"
+                cx(1230), cy(765), text=p_antes_int, anchor="e",
+                font=("Arial", int(64 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(1045), cy(600), text=p_antes_dec, anchor="w",
-                font=("Arial", int(56 * sy), "bold"), fill="#111111"
+                cx(1300), cy(765), text=p_antes_dec, anchor="w",
+                font=("Arial", int(64 * sy), "bold"), fill="#111111"
             )
 
             if desc:
                 self.canvas.create_text(
-                    cx(635),
-                    cy(450),
+                    cx(792),
+                    cy(563),
                     text=desc,
-                    width=cx(1150),
+                    width=cx(1425),
                     anchor="center",
                     justify="center",
-                    font=("Arial", max(10, int(46 * sy)), "bold"),
+                    font=("Arial", max(10, int(36 * sy)), "bold"),
                     fill="#111111",
                 )
 
             if promo_terminos:
                 self.canvas.create_text(
-                    cx(85),
-                    cy(695),
+                    cx(95),
+                    cy(865),
                     text=promo_terminos,
-                    width=cx(1100),
+                    width=cx(1395),
                     anchor="nw",
                     justify="left",
-                    font=("Arial", max(9, int(36 * sy)), "bold"),
+                    font=("Arial", max(9, int(28 * sy)), "bold"),
                     fill="#111111",
                 )
                 if promo_terminos2:
                     self.canvas.create_text(
-                        cx(85),
-                        cy(730),
+                        cx(95),
+                        cy(900),
                         text=promo_terminos2,
-                        width=cx(1100),
+                        width=cx(1395),
                         anchor="nw",
                         justify="left",
-                        font=("Arial", max(9, int(36 * sy)), "bold"),
+                        font=("Arial", max(9, int(28 * sy)), "bold"),
                         fill="#111111",
                     )
 
