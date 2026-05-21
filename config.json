@@ -2,7 +2,7 @@
   "conexion_odbc": {
     "server": ".\\POS",
     "database": "NPV",
-    "trusted_connection": true,
+    "trusted_connection": false,
     "username": "sa",
     "driver": "{ODBC Driver 17 for SQL Server}",
     "password_encrypted": "gAAAAABqBJZsgyjgAaqeNn6KEqJvk1Yg9499qThuvRMng_lCMQVbp5wsgMjSkXVirsuAjXQp2IJY_4oQKoitwXL2ecLGqzpQcA=="
@@ -63,6 +63,7 @@
     "mostrar_logo": true,
     "formato_papel_mm": 80,
     "area_util_mm": 76,
-    "fuente_predeterminada": "Arial Bold"
+    "fuente_predeterminada": "Arial Bold",
+    "individual_print": false
   }
 }

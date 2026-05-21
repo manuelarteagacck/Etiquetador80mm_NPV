@@ -142,7 +142,11 @@ DEFAULT_CONFIG = {
         "espacio_abajo_precio": 0
     },
     "corte": "partial",  # "partial" | "full"
-    "vigencia_default": "Vigente {MES_ABR} {YYYY}"  # plantilla con macros
+    "vigencia_default": "Vigente {MES_ABR} {YYYY}",  # plantilla con macros
+    "preferencias": {
+        "auto_print_on_scan": False,
+        "individual_print": False
+    }
 }
 
 
@@ -614,22 +618,22 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -
     hDC.SetBkColor(0xFFFFFF)
     hDC.SetBkMode(win32con.OPAQUE)
 
-    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(116), "weight": win32con.FW_BOLD})
-    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(116), "weight": win32con.FW_BOLD})
+    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(100), "weight": win32con.FW_BOLD})
+    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(100), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_savings)
-    hDC.DrawText(p_ahorra_int, rect(1010, 65, 1325, 205), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahorra_int, rect(940, 70, 1245, 200), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_savings_dec)
-    hDC.DrawText(p_ahorra_dec, rect(1390, 65, 1480, 205), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahorra_dec, rect(1310, 70, 1460, 200), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
-    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(192), "weight": win32con.FW_BOLD})
-    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(192), "weight": win32con.FW_BOLD})
+    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(166), "weight": win32con.FW_BOLD})
+    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(166), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_now)
-    hDC.DrawText(p_ahora_int, rect(365, 325, 1165, 545), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahora_int, rect(300, 285, 1065, 480), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_now_dec)
-    hDC.DrawText(p_ahora_dec, rect(1300, 325, 1460, 545), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(p_ahora_dec, rect(1210, 285, 1405, 480), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
-    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(64), "weight": win32con.FW_BOLD})
-    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(64), "weight": win32con.FW_BOLD})
+    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(66), "weight": win32con.FW_BOLD})
+    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(66), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_before)
     hDC.DrawText(p_antes_int, rect(1020, 720, 1230, 810), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
     hDC.SelectObject(font_before_dec)
@@ -639,7 +643,7 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -
 
     desc = (item_dict.get("DESCRIPCION") or "").upper()
     if desc:
-        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(36), "weight": win32con.FW_BOLD})
+        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(40), "weight": win32con.FW_BOLD})
         hDC.SelectObject(font_desc)
         hDC.DrawText(desc, rect(80, 535, 1505, 590), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
@@ -683,7 +687,7 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
 
             # --- 2. Dibujar Descripción ---
             try:
-                font_desc = win32ui.CreateFont({"name": "Arial", "height": 42, "weight": win32con.FW_BOLD})
+                font_desc = win32ui.CreateFont({"name": "Arial", "height": 46, "weight": win32con.FW_BOLD})
                 hDC.SelectObject(font_desc)
                 desc = (item_dict.get("DESCRIPCION") or "").upper()
                 print(f"Dibujando descripción: {desc}") # <-- DEBUG
@@ -762,6 +766,7 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
     Imprime la etiqueta en formato angosto.
     """
     item_dict = _item_for_individual_label(item_dict)
+    auto_individual_print = bool(item_dict.get("_AUTO_INDIVIDUAL_PRINT"))
     printer_name = _get_selected_printer_name(config)
     if not printer_name:
         raise RuntimeError("No se pudo determinar la impresora a usar.")
@@ -783,12 +788,14 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
 
             # --- 2. Dibujar Descripción ---
             try:
-                font_desc = win32ui.CreateFont({"name": "Arial", "height": 36, "weight": win32con.FW_BOLD})
+                desc_font_height = 34 if auto_individual_print else 40
+                desc_advance = 112 if auto_individual_print else 70
+                font_desc = win32ui.CreateFont({"name": "Arial", "height": desc_font_height, "weight": win32con.FW_BOLD})
                 hDC.SelectObject(font_desc)
                 desc = (item_dict.get("DESCRIPCION") or "").upper()
                 rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + 200)
                 hDC.DrawText(desc, rect, win32con.DT_CENTER | win32con.DT_WORDBREAK)
-                y_pos += 70 # Avance original
+                y_pos += desc_advance
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar la descripción (individual): {e}")
 
@@ -797,7 +804,7 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
                 font_price_height = 77
                 font_price = win32ui.CreateFont({"name": "Arial", "height": font_price_height, "weight": win32con.FW_BOLD})
                 hDC.SelectObject(font_price)
-                precio = item_dict.get("PRECIO", "$0.00")
+                precio = _format_currency(item_dict.get("PRECIO", "$0.00"))
                 precio_especial = item_dict.get("PRECIO_ESPECIAL", "")
                 if precio_especial:
                     precio_base_num = _price_to_float(precio) or 0
@@ -1084,27 +1091,27 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             promo_terminos2 = self.item.get("PROMO_TERMINOS2") or ""
 
             # AHORRA
-            self.canvas.create_rectangle(cx(1010), cy(65), cx(1325), cy(205), fill="#FFFFFF", outline="")
-            self.canvas.create_rectangle(cx(1390), cy(65), cx(1480), cy(205), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(940), cy(70), cx(1245), cy(200), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1310), cy(70), cx(1460), cy(200), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(1325), cy(135), text=p_ahorra_int, anchor="e",
-                font=("Arial", int(116 * sy), "bold"), fill="#111111"
+                cx(1245), cy(135), text=p_ahorra_int, anchor="e",
+                font=("Arial", int(100 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(1390), cy(135), text=p_ahorra_dec, anchor="w",
-                font=("Arial", int(116 * sy), "bold"), fill="#111111"
+                cx(1310), cy(135), text=p_ahorra_dec, anchor="w",
+                font=("Arial", int(100 * sy), "bold"), fill="#111111"
             )
 
             # PRECIO NUEVO
-            self.canvas.create_rectangle(cx(365), cy(325), cx(1165), cy(545), fill="#FFFFFF", outline="")
-            self.canvas.create_rectangle(cx(1300), cy(325), cx(1460), cy(545), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(300), cy(285), cx(1065), cy(480), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1210), cy(285), cx(1405), cy(480), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(1165), cy(420), text=p_ahora_int, anchor="e",
-                font=("Arial", int(192 * sy), "bold"), fill="#111111"
+                cx(1065), cy(382), text=p_ahora_int, anchor="e",
+                font=("Arial", int(166 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
-                cx(1300), cy(420), text=p_ahora_dec, anchor="w",
-                font=("Arial", int(192 * sy), "bold"), fill="#111111"
+                cx(1210), cy(382), text=p_ahora_dec, anchor="w",
+                font=("Arial", int(166 * sy), "bold"), fill="#111111"
             )
 
             # PRECIO ANTERIOR
@@ -1112,11 +1119,11 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             self.canvas.create_rectangle(cx(1300), cy(720), cx(1390), cy(810), fill="#FFFFFF", outline="")
             self.canvas.create_text(
                 cx(1230), cy(765), text=p_antes_int, anchor="e",
-                font=("Arial", int(64 * sy), "bold"), fill="#111111"
+                font=("Arial", int(66 * sy), "bold"), fill="#111111"
             )
             self.canvas.create_text(
                 cx(1300), cy(765), text=p_antes_dec, anchor="w",
-                font=("Arial", int(64 * sy), "bold"), fill="#111111"
+                font=("Arial", int(66 * sy), "bold"), fill="#111111"
             )
 
             if desc:
@@ -1127,7 +1134,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                     width=cx(1425),
                     anchor="center",
                     justify="center",
-                    font=("Arial", max(10, int(36 * sy)), "bold"),
+                    font=("Arial", max(10, int(40 * sy)), "bold"),
                     fill="#111111",
                 )
 
@@ -1170,12 +1177,12 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         center_x = label_width / 2
 
         desc = (self.item.get("DESCRIPCION") or "").upper()
-        price = self.item.get("PRECIO") or "$0.00"
+        price = _format_currency(self.item.get("PRECIO") or "$0.00")
         special_price = self.item.get("PRECIO_ESPECIAL") or ""
         vigencia = self.item.get("VIGENCIA") or ""
         codes = f"{self.item.get('ARTICULO', '')}   {self.item.get('UPC', '')}".strip()
 
-        desc_size = self._fit_text_size(desc, 45, 22 if self.individual else 24, 15)
+        desc_size = self._fit_text_size(desc, 49, 26 if self.individual else 28, 15)
         self.canvas.create_text(
             center_x,
             y1 + 24,
@@ -1267,8 +1274,11 @@ class App(ThemedTk):
     def __init__(self):
         super().__init__(theme="arc")
         self.title(APP_TITLE)
-        self.geometry("900x720")
-        self.resizable(False, False)
+        screen_height = self.winfo_screenheight()
+        window_height = min(720, max(520, screen_height - 120))
+        self.geometry(f"900x{window_height}")
+        self.minsize(720, 480)
+        self.resizable(True, True)
 
         self.config_data = load_config()
         self.current_built_item = {}
@@ -1321,8 +1331,22 @@ class App(ThemedTk):
         style.configure("TSpinbox", font=self.font_normal, padding=5)
 
     def create_widgets(self):
-        main_frame = ttk.Frame(self, padding=20)
-        main_frame.pack(expand=True, fill="both")
+        scroll_container = ttk.Frame(self)
+        scroll_container.pack(expand=True, fill="both")
+        scroll_container.columnconfigure(0, weight=1)
+        scroll_container.rowconfigure(0, weight=1)
+
+        self.main_canvas = tk.Canvas(scroll_container, bg=self.BG_COLOR, highlightthickness=0)
+        self.main_scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=self.main_canvas.yview)
+        self.main_canvas.configure(yscrollcommand=self.main_scrollbar.set)
+        self.main_canvas.grid(row=0, column=0, sticky="nsew")
+        self.main_scrollbar.grid(row=0, column=1, sticky="ns")
+
+        main_frame = ttk.Frame(self.main_canvas, padding=20)
+        self.main_canvas_window = self.main_canvas.create_window((0, 0), window=main_frame, anchor="nw")
+        main_frame.bind("<Configure>", self._update_main_scrollregion)
+        self.main_canvas.bind("<Configure>", self._resize_main_canvas_window)
+        self.main_canvas.bind_all("<MouseWheel>", self._on_main_mousewheel)
 
         # --- Búsqueda ---
         search_frame = ttk.LabelFrame(main_frame, text="Búsqueda (Artículo, UPC o Descripción)")
@@ -1385,7 +1409,8 @@ class App(ThemedTk):
         printer_frame.pack(fill="x", pady=(0, 20))
         printer_frame.columnconfigure(1, weight=1)
 
-        self.printer_mode = tk.StringVar(value=self.config_data["impresora"]["modo"])
+        self.config_data.setdefault("impresora", {})["modo"] = "default"
+        self.printer_mode = tk.StringVar(value="default")
         self.rb_default = ttk.Radiobutton(printer_frame, text="Usar predeterminada", value="default", variable=self.printer_mode, command=self.on_printer_mode_change)
         self.rb_default.grid(row=0, column=0, sticky="w", padx=pad_x, pady=pad_y)
 
@@ -1398,11 +1423,13 @@ class App(ThemedTk):
         self.lbl_default = ttk.Label(printer_frame, text="", font=self.font_normal)
         self.lbl_default.grid(row=0, column=1, sticky="w", padx=pad_x, pady=pad_y)
 
-        self.auto_print_var = tk.BooleanVar(value=False)
+        preferencias = self.config_data.setdefault("preferencias", {})
+
+        self.auto_print_var = tk.BooleanVar(value=bool(preferencias.get("auto_print_on_scan", False)))
         self.chk_auto_print = ttk.Checkbutton(printer_frame, text="Impresión automática al escanear", variable=self.auto_print_var)
         self.chk_auto_print.grid(row=2, column=0, columnspan=2, sticky="w", padx=pad_x, pady=pad_y)
 
-        self.individual_print_var = tk.BooleanVar(value=False)
+        self.individual_print_var = tk.BooleanVar(value=bool(preferencias.get("individual_print", False)))
         self.chk_individual_print = ttk.Checkbutton(printer_frame, text="Imprimir etiqueta individual (angosta)", variable=self.individual_print_var)
         self.chk_individual_print.grid(row=3, column=0, columnspan=2, sticky="w", padx=pad_x, pady=pad_y)
 
@@ -1428,6 +1455,20 @@ class App(ThemedTk):
         self.on_printer_mode_change()
 
     # --------- Helpers UI ----------
+    def _update_main_scrollregion(self, event=None):
+        self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+
+    def _resize_main_canvas_window(self, event):
+        self.main_canvas.itemconfigure(self.main_canvas_window, width=event.width)
+
+    def _on_main_mousewheel(self, event):
+        try:
+            if event.widget.winfo_toplevel() is not self:
+                return
+        except Exception:
+            return
+        self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
     def _clear_placeholder(self, entry: tk.Entry, text: str):
         if entry.get() == text:
             entry.delete(0, tk.END)
@@ -1464,6 +1505,37 @@ class App(ThemedTk):
         else:
             self.cmb_printers.configure(state="disabled")
 
+    def _is_individual_print_enabled(self) -> bool:
+        return bool(self.individual_print_var.get())
+
+    def _send_label_to_printer(
+        self,
+        item: Dict[str, Any],
+        copies: int,
+        individual_print: Optional[bool] = None,
+        show_errors: bool = True,
+    ):
+        if individual_print is None:
+            individual_print = self._is_individual_print_enabled()
+
+        if individual_print:
+            print_label_gdi_small(item, self.config_data, copies=copies, show_errors=show_errors)
+        else:
+            print_label_gdi(item, self.config_data, copies=copies, show_errors=show_errors)
+
+    def _item_for_silent_print(self, item: Dict[str, Any], individual_print: bool) -> Dict[str, Any]:
+        item_to_print = build_label_text(item, self.config_data)
+        if individual_print:
+            item_to_print = _item_for_individual_label(item_to_print)
+            item_to_print["_AUTO_INDIVIDUAL_PRINT"] = True
+            return item_to_print
+
+        if not item_to_print.get("TIENE_PRECIO_ESPECIAL"):
+            item_to_print["PRECIO_ESPECIAL"] = ""
+            item_to_print["PROMO_TERMINOS"] = ""
+            item_to_print["PROMO_TERMINOS2"] = ""
+        return item_to_print
+
     # --------- Eventos ----------
     def on_unified_search(self, event=None):
         term = (self.entry_search.get() or "").strip()
@@ -1471,6 +1543,7 @@ class App(ThemedTk):
             return
 
         auto_print = self.auto_print_var.get()
+        individual_print = self._is_individual_print_enabled()
         try:
             results = search_items(term, self.config_data)
             
@@ -1481,7 +1554,13 @@ class App(ThemedTk):
             elif len(results) == 1:
                 self._show_item_in_preview(results[0], suppress_no_special_message=auto_print)
                 if auto_print:
-                    self._print_current_item_silent()
+                    self.after(
+                        80,
+                        lambda item=results[0], individual=individual_print: self._print_item_silent(
+                            item,
+                            individual_print=individual,
+                        ),
+                    )
             else:
                 if not auto_print:
                     # Multiple results, open selection window
@@ -1509,10 +1588,7 @@ class App(ThemedTk):
         try:
             copies = int(self.spin_copias.get())
             self._update_config_from_ui()
-            if self.individual_print_var.get():
-                print_label_gdi_small(mock, self.config_data, copies=copies)
-            else:
-                print_label_gdi(mock, self.config_data, copies=copies)
+            self._send_label_to_printer(mock, copies=copies)
             messagebox.showinfo(APP_TITLE, "Impresión de prueba enviada.")
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error en impresión de prueba: {e}")
@@ -1542,7 +1618,7 @@ class App(ThemedTk):
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede imprimir sin Producto y Precio.")
             return
-        if not self.individual_print_var.get() and not self._validate_special_price(item):
+        if not self._is_individual_print_enabled() and not self._validate_special_price(item):
             return
         try:
             # Validaciones
@@ -1554,22 +1630,20 @@ class App(ThemedTk):
                 raise ValueError("Copias fuera de rango (1..20).")
 
             self._update_config_from_ui()
-            if self.individual_print_var.get():
-                print_label_gdi_small(item, self.config_data, copies=copies)
-            else:
-                print_label_gdi(item, self.config_data, copies=copies)
+            self._send_label_to_printer(item, copies=copies)
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error al imprimir: {e}")
 
-    def _print_current_item_silent(self):
+    def _print_current_item_silent(self, individual_print: Optional[bool] = None):
         item = self._collect_item_from_preview()
+        if individual_print is None:
+            individual_print = self._is_individual_print_enabled()
+        self._print_item_silent(item, individual_print=individual_print)
+
+    def _print_item_silent(self, item: Dict[str, Any], individual_print: bool):
+        item = self._item_for_silent_print(item, individual_print)
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             return
-
-        if not item.get("TIENE_PRECIO_ESPECIAL"):
-            item["PRECIO_ESPECIAL"] = ""
-            item["PROMO_TERMINOS"] = ""
-            item["PROMO_TERMINOS2"] = ""
 
         try:
             price_digits = re.sub(r"[^0-9.]", "", item["PRECIO"])
@@ -1580,10 +1654,12 @@ class App(ThemedTk):
                 return
 
             self._update_config_from_ui()
-            if self.individual_print_var.get():
-                print_label_gdi_small(item, self.config_data, copies=copies, show_errors=False)
-            else:
-                print_label_gdi(item, self.config_data, copies=copies, show_errors=False)
+            self._send_label_to_printer(
+                item,
+                copies=copies,
+                individual_print=individual_print,
+                show_errors=False,
+            )
         except Exception as e:
             write_log("ERROR auto_print", e, extra=f"item={item}")
 
@@ -1592,14 +1668,14 @@ class App(ThemedTk):
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede mostrar la vista previa sin Producto y Precio.")
             return
-        if not self.individual_print_var.get() and not self._validate_special_price(item):
+        if not self._is_individual_print_enabled() and not self._validate_special_price(item):
             return
         try:
             price_digits = re.sub(r"[^0-9.]", "", item["PRECIO"])
             if not price_digits:
                 raise ValueError("Precio invalido.")
             self._update_config_from_ui()
-            LabelPrintPreviewWindow(self, item, individual=self.individual_print_var.get())
+            LabelPrintPreviewWindow(self, item, individual=self._is_individual_print_enabled())
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error al mostrar vista previa: {e}")
 
@@ -1716,6 +1792,10 @@ class App(ThemedTk):
             self.config_data["impresora"]["printer_name"] = self.cmb_printers.get()
         else:
             self.config_data["impresora"]["printer_name"] = ""
+
+        preferencias = self.config_data.setdefault("preferencias", {})
+        preferencias["auto_print_on_scan"] = bool(self.auto_print_var.get())
+        preferencias["individual_print"] = self._is_individual_print_enabled()
 
         # The "tamaños" and "espaciados" sections are removed from the new UI,
         # so we don't need to update them anymore. If you want to keep them,
