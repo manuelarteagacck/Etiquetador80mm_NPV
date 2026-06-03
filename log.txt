@@ -70,3 +70,15 @@ Traceback (most recent call last):
     return pyodbc.connect(conn_str, timeout=5)
            ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
 pyodbc.InterfaceError: ('28000', '[28000] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Login failed for user \'CCK\\manuel.arteaga\'. (18456) (SQLDriverConnect); [28000] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Cannot open database "NPV" requested by the login. The login failed. (4060); [28000] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Login failed for user \'CCK\\manuel.arteaga\'. (18456); [28000] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Cannot open database "NPV" requested by the login. The login failed. (4060)')
+================================================================================
+2026-05-26 08:12:49
+ERROR search_items
+term=HE1010043
+connection=DRIVER={ODBC Driver 17 for SQL Server};SERVER=.\POS;DATABASE=NPV;UID=sa;PWD=***;
+Traceback (most recent call last):
+  File "D:\CCK\EXTRA\Documentos\GitHub\Etiquetador80mm_NPV\app.py", line 486, in search_items
+    conn = _get_connection(cfg)
+  File "D:\CCK\EXTRA\Documentos\GitHub\Etiquetador80mm_NPV\app.py", line 353, in _get_connection
+    return pyodbc.connect(conn_str, timeout=5)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+pyodbc.OperationalError: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Encryption not supported on the client. (21) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]SSL Provider: No credentials are available in the security package\r\n (-2146893042); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Client unable to establish connection (21); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (-2146893042)')

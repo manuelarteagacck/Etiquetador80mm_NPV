@@ -145,7 +145,8 @@ DEFAULT_CONFIG = {
     "vigencia_default": "Vigente {MES_ABR} {YYYY}",  # plantilla con macros
     "preferencias": {
         "auto_print_on_scan": False,
-        "individual_print": False
+        "individual_print": False,
+        "special_price_print": False
     }
 }
 
@@ -406,6 +407,25 @@ def _split_price(value) -> tuple:
     parts = f"{v:.2f}".split(".")
     return (parts[0], parts[1])
 
+
+def _quantity_to_float(value) -> Optional[float]:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def _format_quantity(value) -> str:
+    qty = _quantity_to_float(value)
+    if qty is None:
+        return ""
+    if qty.is_integer():
+        return str(int(qty))
+    return f"{qty:g}"
+
+
 def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
     """
     Busca artículos por UPC, ARTICULO, o DESCRIPCION (LIKE).
@@ -454,6 +474,7 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
             (1 + COALESCE(i3.PORCENTAJE, 0) / 100.0) *
             (1 + COALESCE(i4.PORCENTAJE, 0) / 100.0) AS PRECIO_ESPECIAL,
         CASE WHEN promo.PRECIOUNITARIO IS NULL THEN 0 ELSE 1 END AS TIENE_PRECIO_ESPECIAL,
+        promo.PROMO_CANTIDAD,
         promo.PROMO_FECHAINICIO,
         promo.PROMO_FECHAFINAL,
         (SELECT TOP 1 e.EQUIVALENTE FROM NPV.dbo.NPVFDArticulosEquivalentes e WHERE e.ARTICULO = a.ARTICULO) as UPC,
@@ -462,16 +483,24 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
     JOIN PreciosRankeados pr ON a.ARTICULO = pr.ARTICULO
     OUTER APPLY (
         SELECT TOP 1
+            pl.CANTIDAD AS PROMO_CANTIDAD,
             pl.PRECIOUNITARIO,
             pe.VIGENCIAINICIO AS PROMO_FECHAINICIO,
             pe.VIGENCIAFINAL AS PROMO_FECHAFINAL
         FROM NPV.dbo.NPVFDPromocionLineas pl
         INNER JOIN NPV.dbo.NPVFDPromocionEncabezado pe ON pe.CLAVE = pl.CLAVE
         WHERE pl.CLAVEARTICULO = a.ARTICULO
-          AND pl.CANTIDAD = 1
+          AND COALESCE(pl.CANTIDAD, 0) > 0
+          AND pl.PRECIOUNITARIO IS NOT NULL
+          AND pl.STATUS = 'A'
+          AND pe.STATUS = 'A'
+          AND pe.VIGENCIAINICIO <= GETDATE()
           AND pe.VIGENCIAFINAL >= GETDATE()
-          AND pe.CLASE = 'Z002'
-        ORDER BY pl.CLAVE DESC
+          AND pe.CLASE IN ('Z002', 'Z003')
+        ORDER BY
+            CASE WHEN pl.CANTIDAD = 1 THEN 0 ELSE 1 END,
+            pl.PRECIOUNITARIO ASC,
+            pl.CLAVE DESC
     ) promo
     LEFT JOIN NPV.dbo.NPVFDImpuestos i1 ON i1.IMPUESTO = pr.TIPOIMPUESTO1
     LEFT JOIN NPV.dbo.NPVFDImpuestos i2 ON i2.IMPUESTO = pr.TIPOIMPUESTO2
@@ -490,18 +519,30 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
         for row in rows:
             fecha_vigencia = row.FECHAINICIO.strftime("%d/%m/%Y") if row.FECHAINICIO else datetime.date.today().strftime("%d/%m/%Y")
             precio_venta = _format_price(row.PRECIO)
-            precio_especial = _format_price(row.PRECIO_ESPECIAL) or precio_venta
+            tiene_precio_especial = bool(row.TIENE_PRECIO_ESPECIAL)
+            precio_especial = _format_price(row.PRECIO_ESPECIAL) if tiene_precio_especial else ""
+            precio_venta_num = _price_to_float(precio_venta)
+            precio_especial_num = _price_to_float(precio_especial)
+            if (
+                tiene_precio_especial
+                and precio_venta_num is not None
+                and precio_especial_num is not None
+                and precio_especial_num >= precio_venta_num
+            ):
+                tiene_precio_especial = False
+                precio_especial = ""
             
             item = {
                 "ARTICULO": str(row.ARTICULO).strip(),
                 "DESCRIPCION": str(row.DESCRIPCION or "").strip(),
                 "PRECIO": precio_venta,
                 "PRECIO_ESPECIAL": precio_especial,
-                "TIENE_PRECIO_ESPECIAL": bool(row.TIENE_PRECIO_ESPECIAL),
+                "TIENE_PRECIO_ESPECIAL": tiene_precio_especial,
                 "UPC": _normalize_upc_digits(row.UPC or ""),
                 "VIGENCIA": f"Valido a partir de: {fecha_vigencia} Aplican TyC",
-                "PROMO_FECHAINICIO": row.PROMO_FECHAINICIO,
-                "PROMO_FECHAFINAL": row.PROMO_FECHAFINAL,
+                "PROMO_CANTIDAD": row.PROMO_CANTIDAD if tiene_precio_especial else None,
+                "PROMO_FECHAINICIO": row.PROMO_FECHAINICIO if tiene_precio_especial else None,
+                "PROMO_FECHAFINAL": row.PROMO_FECHAFINAL if tiene_precio_especial else None,
             }
             results.append(item)
 
@@ -566,9 +607,102 @@ def _item_for_individual_label(item_dict: Dict[str, Any]) -> Dict[str, Any]:
     item = dict(item_dict or {})
     item["PRECIO_ESPECIAL"] = ""
     item["TIENE_PRECIO_ESPECIAL"] = False
+    item["PROMO_CANTIDAD"] = None
     item["PROMO_TERMINOS"] = ""
     item["PROMO_TERMINOS2"] = ""
     return item
+
+
+CODE128_PATTERNS = [
+    "212222", "222122", "222221", "121223", "121322", "131222",
+    "122213", "122312", "132212", "221213", "221312", "231212",
+    "112232", "122132", "122231", "113222", "123122", "123221",
+    "223211", "221132", "221231", "213212", "223112", "312131",
+    "311222", "321122", "321221", "312212", "322112", "322211",
+    "212123", "212321", "232121", "111323", "131123", "131321",
+    "112313", "132113", "132311", "211313", "231113", "231311",
+    "112133", "112331", "132131", "113123", "113321", "133121",
+    "313121", "211331", "231131", "213113", "213311", "213131",
+    "311123", "311321", "331121", "312113", "312311", "332111",
+    "314111", "221411", "431111", "111224", "111422", "121124",
+    "121421", "141122", "141221", "112214", "112412", "122114",
+    "122411", "142112", "142211", "241211", "221114", "413111",
+    "241112", "134111", "111242", "121142", "121241", "114212",
+    "124112", "124211", "411212", "421112", "421211", "212141",
+    "214121", "412121", "111143", "111341", "131141", "114113",
+    "114311", "411113", "411311", "113141", "114131", "311141",
+    "411131", "211412", "211214", "211232", "2331112",
+]
+
+
+def _barcode_value_for_item(item_dict: Dict[str, Any]) -> str:
+    upc = _normalize_upc_digits(item_dict.get("UPC"))
+    if upc:
+        return upc
+    return re.sub(r"[^\x20-\x7E]", "", str(item_dict.get("ARTICULO") or "").strip())
+
+
+def _code128_b_widths(value: str) -> List[int]:
+    text = re.sub(r"[^\x20-\x7E]", "", str(value or "").strip())
+    if not text:
+        return []
+
+    codes = [104]  # Start Code B
+    codes.extend(ord(ch) - 32 for ch in text)
+
+    checksum = codes[0]
+    for pos, code in enumerate(codes[1:], start=1):
+        checksum += code * pos
+    codes.append(checksum % 103)
+    codes.append(106)  # Stop
+
+    widths: List[int] = []
+    for code in codes:
+        widths.extend(int(width) for width in CODE128_PATTERNS[code])
+    return widths
+
+
+def draw_code128_barcode_gdi(
+    hDC,
+    value: str,
+    left: int,
+    top: int,
+    right: int,
+    bar_height: int = 58,
+    text_height: int = 20,
+) -> int:
+    widths = _code128_b_widths(value)
+    if not widths:
+        return 0
+
+    quiet_zone_modules = 10
+    total_modules = sum(widths) + quiet_zone_modules * 2
+    available_width = max(1, right - left)
+    module_width = max(1, available_width // total_modules)
+    barcode_width = total_modules * module_width
+    start_x = left + max(0, (available_width - barcode_width) // 2)
+    x = start_x + quiet_zone_modules * module_width
+
+    hDC.FillSolidRect((left, top, right, top + bar_height + text_height + 6), 0xFFFFFF)
+
+    draw_bar = True
+    for width in widths:
+        segment_width = width * module_width
+        if draw_bar:
+            hDC.FillSolidRect((x, top, x + segment_width, top + bar_height), 0x000000)
+        x += segment_width
+        draw_bar = not draw_bar
+
+    font_text = win32ui.CreateFont({"name": "Arial", "height": text_height, "weight": win32con.FW_NORMAL})
+    hDC.SelectObject(font_text)
+    hDC.SetTextColor(0x000000)
+    hDC.SetBkMode(win32con.TRANSPARENT)
+    hDC.DrawText(
+        str(value),
+        (left, top + bar_height + 2, right, top + bar_height + text_height + 4),
+        win32con.DT_CENTER | win32con.DT_SINGLELINE,
+    )
+    return bar_height + text_height + 6
 
 
 def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int) -> bool:
@@ -684,6 +818,7 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
                 continue
 
             y_pos = 20 # Margen superior
+            normal_price_label = not bool(item_dict.get("PRECIO_ESPECIAL"))
 
             # --- 2. Dibujar Descripción ---
             try:
@@ -746,6 +881,20 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
                     rect = (10, y_pos, printable_width - 10, y_pos + 30)
                     hDC.DrawText(text, rect, win32con.DT_CENTER | win32con.DT_SINGLELINE)
                     y_pos += 25
+
+                if normal_price_label:
+                    barcode_value = _barcode_value_for_item(item_dict)
+                    if barcode_value:
+                        y_pos += 4
+                        y_pos += draw_code128_barcode_gdi(
+                            hDC,
+                            barcode_value,
+                            35,
+                            y_pos,
+                            printable_width - 35,
+                            bar_height=58,
+                            text_height=20,
+                        )
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar el pie de página: {e}")
 
@@ -784,6 +933,7 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
             hDC.StartPage()
 
             y_pos = 20 # Margen superior (como el original)
+            normal_price_label = not bool(item_dict.get("PRECIO_ESPECIAL"))
             horizontal_margin = 40 # Margen horizontal más grande para hacerlo más angosto
 
             # --- 2. Dibujar Descripción ---
@@ -847,6 +997,20 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
                     rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + 30)
                     hDC.DrawText(text, rect, win32con.DT_CENTER | win32con.DT_SINGLELINE)
                     y_pos += 25
+
+                if normal_price_label:
+                    barcode_value = _barcode_value_for_item(item_dict)
+                    if barcode_value:
+                        y_pos += 4
+                        y_pos += draw_code128_barcode_gdi(
+                            hDC,
+                            barcode_value,
+                            horizontal_margin,
+                            y_pos,
+                            printable_width - horizontal_margin,
+                            bar_height=52,
+                            text_height=18,
+                        )
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar el pie de página (individual): {e}")
 
@@ -875,14 +1039,15 @@ def build_label_text(item_dict: Dict[str, Any], config: dict) -> Dict[str, Any]:
     descripcion = (item_dict.get("DESCRIPCION") or "").strip()
     precio      = _format_price(item_dict.get("PRECIO", "").replace("$", "") if isinstance(item_dict.get("PRECIO"), str) else item_dict.get("PRECIO"))
     precio_especial = _format_price(item_dict.get("PRECIO_ESPECIAL", "").replace("$", "") if isinstance(item_dict.get("PRECIO_ESPECIAL"), str) else item_dict.get("PRECIO_ESPECIAL"))
+    tiene_precio_especial = bool(item_dict.get("TIENE_PRECIO_ESPECIAL")) or bool(precio_especial)
     articulo    = (item_dict.get("ARTICULO") or "").strip()
     upc         = _normalize_upc_digits(item_dict.get("UPC"))
 
     if not precio:
         # Precio inválido
         precio = ""
-    if not precio_especial:
-        precio_especial = precio
+    if not tiene_precio_especial:
+        precio_especial = ""
 
     # Vigencia: usa la que viene del item si existe, si no, la de por defecto.
     vigencia = item_dict.get("VIGENCIA")
@@ -891,18 +1056,27 @@ def build_label_text(item_dict: Dict[str, Any], config: dict) -> Dict[str, Any]:
 
     promo_inicio = item_dict.get("PROMO_FECHAINICIO")
     promo_final = item_dict.get("PROMO_FECHAFINAL")
+    promo_cantidad = item_dict.get("PROMO_CANTIDAD")
     promo_inicio_txt = _format_date(promo_inicio)
     promo_final_txt = _format_date(promo_final)
     promo_terminos = ""
     if promo_inicio_txt and promo_final_txt:
-        promo_terminos = f"Terminos y Condiciones: valido del {promo_inicio_txt} al {promo_final_txt}"
+        qty = _quantity_to_float(promo_cantidad)
+        if qty and qty > 1:
+            promo_terminos = (
+                f"Terminos y Condiciones: compra minima {_format_quantity(qty)} pzas, "
+                f"valido del {promo_inicio_txt} al {promo_final_txt}"
+            )
+        else:
+            promo_terminos = f"Terminos y Condiciones: valido del {promo_inicio_txt} al {promo_final_txt}"
     promo_terminos2 = "No acumulable. Sujeto a cambios sin aviso."
 
     return {
         "DESCRIPCION": descripcion,
         "PRECIO": precio,
         "PRECIO_ESPECIAL": precio_especial,
-        "TIENE_PRECIO_ESPECIAL": bool(item_dict.get("TIENE_PRECIO_ESPECIAL")),
+        "TIENE_PRECIO_ESPECIAL": tiene_precio_especial,
+        "PROMO_CANTIDAD": promo_cantidad,
         "PROMO_FECHAINICIO": promo_inicio,
         "PROMO_FECHAFINAL": promo_final,
         "PROMO_TERMINOS": promo_terminos,
@@ -1021,7 +1195,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         if self.item.get("PRECIO_ESPECIAL"):
             label_height = int(label_width * PROMO_TEMPLATE_SIZE[1] / PROMO_TEMPLATE_SIZE[0])
         else:
-            label_height = 285
+            label_height = 360 if individual else 350
         window_width = label_width + 60
         window_height = label_height + 95
         self.geometry(f"{window_width}x{window_height}")
@@ -1057,6 +1231,46 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         if text_len <= max_chars:
             return base_size
         return max(min_size, base_size - ((text_len - max_chars) // 6 + 1) * 2)
+
+    def _draw_code128_barcode_canvas(
+        self,
+        value: str,
+        left: float,
+        top: float,
+        right: float,
+        bar_height: float,
+        text_size: int,
+    ) -> float:
+        widths = _code128_b_widths(value)
+        if not widths:
+            return 0
+
+        quiet_zone_modules = 10
+        total_modules = sum(widths) + quiet_zone_modules * 2
+        available_width = max(1, right - left)
+        module_width = available_width / total_modules
+        barcode_width = total_modules * module_width
+        x = left + max(0, (available_width - barcode_width) / 2) + quiet_zone_modules * module_width
+
+        self.canvas.create_rectangle(left, top, right, top + bar_height + text_size + 8, fill="#FFFFFF", outline="")
+
+        draw_bar = True
+        for width in widths:
+            segment_width = width * module_width
+            if draw_bar:
+                self.canvas.create_rectangle(x, top, x + segment_width, top + bar_height, fill="#111111", outline="")
+            x += segment_width
+            draw_bar = not draw_bar
+
+        self.canvas.create_text(
+            (left + right) / 2,
+            top + bar_height + 4,
+            text=str(value),
+            anchor="n",
+            font=("Arial", text_size),
+            fill="#111111",
+        )
+        return bar_height + text_size + 8
 
     def _draw_label(self, label_width: int, label_height: int):
         self.canvas.delete("all")
@@ -1268,6 +1482,19 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                 font=("Arial", footer_size),
                 fill="#111111",
             )
+            footer_y += 23
+
+        if not special_price:
+            barcode_value = _barcode_value_for_item(self.item)
+            if barcode_value:
+                self._draw_code128_barcode_canvas(
+                    barcode_value,
+                    text_left,
+                    footer_y + 4,
+                    text_right,
+                    48 if self.individual else 50,
+                    11 if self.individual else 12,
+                )
 
 
 class App(ThemedTk):
@@ -1430,8 +1657,22 @@ class App(ThemedTk):
         self.chk_auto_print.grid(row=2, column=0, columnspan=2, sticky="w", padx=pad_x, pady=pad_y)
 
         self.individual_print_var = tk.BooleanVar(value=bool(preferencias.get("individual_print", False)))
-        self.chk_individual_print = ttk.Checkbutton(printer_frame, text="Imprimir etiqueta individual (angosta)", variable=self.individual_print_var)
+        self.chk_individual_print = ttk.Checkbutton(
+            printer_frame,
+            text="Imprimir etiqueta individual (angosta)",
+            variable=self.individual_print_var,
+            command=self.on_individual_print_change,
+        )
         self.chk_individual_print.grid(row=3, column=0, columnspan=2, sticky="w", padx=pad_x, pady=pad_y)
+
+        self.special_price_print_var = tk.BooleanVar(value=bool(preferencias.get("special_price_print", False)))
+        self.chk_special_price_print = ttk.Checkbutton(
+            printer_frame,
+            text="Imprimir etiqueta de precio especial",
+            variable=self.special_price_print_var,
+            command=self.on_special_price_print_change,
+        )
+        self.chk_special_price_print.grid(row=4, column=0, columnspan=2, sticky="w", padx=pad_x, pady=pad_y)
 
         # --- Botones de Acción ---
         buttons_frame = ttk.Frame(main_frame)
@@ -1508,6 +1749,55 @@ class App(ThemedTk):
     def _is_individual_print_enabled(self) -> bool:
         return bool(self.individual_print_var.get())
 
+    def _is_special_price_print_enabled(self) -> bool:
+        return bool(self.special_price_print_var.get())
+
+    def _item_has_special_price(self, item: Dict[str, Any]) -> bool:
+        return bool((item or {}).get("TIENE_PRECIO_ESPECIAL")) and bool((item or {}).get("PRECIO_ESPECIAL"))
+
+    def _sync_special_price_print_option(self, item: Dict[str, Any]):
+        if self._is_individual_print_enabled():
+            self.special_price_print_var.set(False)
+            return
+        self.special_price_print_var.set(self._item_has_special_price(item))
+
+    def on_individual_print_change(self):
+        if self._is_individual_print_enabled():
+            self.special_price_print_var.set(False)
+        elif self._item_has_special_price(self.current_built_item):
+            self.special_price_print_var.set(True)
+
+    def on_special_price_print_change(self):
+        if self._is_special_price_print_enabled():
+            self.individual_print_var.set(False)
+
+    def _item_for_selected_print_format(
+        self,
+        item: Dict[str, Any],
+        individual_print: Optional[bool] = None,
+        special_price_print: Optional[bool] = None,
+        auto_individual_print: bool = False,
+    ) -> Dict[str, Any]:
+        if individual_print is None:
+            individual_print = self._is_individual_print_enabled()
+        if special_price_print is None:
+            special_price_print = self._is_special_price_print_enabled()
+
+        item_to_print = dict(item or {})
+        if individual_print:
+            item_to_print = _item_for_individual_label(item_to_print)
+            if auto_individual_print:
+                item_to_print["_AUTO_INDIVIDUAL_PRINT"] = True
+            return item_to_print
+
+        if not special_price_print:
+            item_to_print["PRECIO_ESPECIAL"] = ""
+            item_to_print["TIENE_PRECIO_ESPECIAL"] = False
+            item_to_print["PROMO_CANTIDAD"] = None
+            item_to_print["PROMO_TERMINOS"] = ""
+            item_to_print["PROMO_TERMINOS2"] = ""
+        return item_to_print
+
     def _send_label_to_printer(
         self,
         item: Dict[str, Any],
@@ -1523,18 +1813,19 @@ class App(ThemedTk):
         else:
             print_label_gdi(item, self.config_data, copies=copies, show_errors=show_errors)
 
-    def _item_for_silent_print(self, item: Dict[str, Any], individual_print: bool) -> Dict[str, Any]:
+    def _item_for_silent_print(
+        self,
+        item: Dict[str, Any],
+        individual_print: bool,
+        special_price_print: bool,
+    ) -> Dict[str, Any]:
         item_to_print = build_label_text(item, self.config_data)
-        if individual_print:
-            item_to_print = _item_for_individual_label(item_to_print)
-            item_to_print["_AUTO_INDIVIDUAL_PRINT"] = True
-            return item_to_print
-
-        if not item_to_print.get("TIENE_PRECIO_ESPECIAL"):
-            item_to_print["PRECIO_ESPECIAL"] = ""
-            item_to_print["PROMO_TERMINOS"] = ""
-            item_to_print["PROMO_TERMINOS2"] = ""
-        return item_to_print
+        return self._item_for_selected_print_format(
+            item_to_print,
+            individual_print=individual_print,
+            special_price_print=special_price_print,
+            auto_individual_print=True,
+        )
 
     # --------- Eventos ----------
     def on_unified_search(self, event=None):
@@ -1544,6 +1835,7 @@ class App(ThemedTk):
 
         auto_print = self.auto_print_var.get()
         individual_print = self._is_individual_print_enabled()
+        special_price_print = self._is_special_price_print_enabled()
         try:
             results = search_items(term, self.config_data)
             
@@ -1552,13 +1844,15 @@ class App(ThemedTk):
                     messagebox.showinfo(APP_TITLE, "No se encontraron artículos.")
                 self._clear_preview()
             elif len(results) == 1:
-                self._show_item_in_preview(results[0], suppress_no_special_message=auto_print)
+                self._show_item_in_preview(results[0])
                 if auto_print:
+                    special_price_print = self._is_special_price_print_enabled()
                     self.after(
                         80,
-                        lambda item=results[0], individual=individual_print: self._print_item_silent(
+                        lambda item=results[0], individual=individual_print, special=special_price_print: self._print_item_silent(
                             item,
                             individual_print=individual,
+                            special_price_print=special,
                         ),
                     )
             else:
@@ -1588,7 +1882,17 @@ class App(ThemedTk):
         try:
             copies = int(self.spin_copias.get())
             self._update_config_from_ui()
-            self._send_label_to_printer(mock, copies=copies)
+            individual_print = self._is_individual_print_enabled()
+            special_price_print = self._is_special_price_print_enabled()
+            if special_price_print:
+                mock["PRECIO_ESPECIAL"] = "$79.90"
+                mock["TIENE_PRECIO_ESPECIAL"] = True
+            mock = self._item_for_selected_print_format(
+                mock,
+                individual_print=individual_print,
+                special_price_print=special_price_print,
+            )
+            self._send_label_to_printer(mock, copies=copies, individual_print=individual_print)
             messagebox.showinfo(APP_TITLE, "Impresión de prueba enviada.")
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error en impresión de prueba: {e}")
@@ -1618,7 +1922,9 @@ class App(ThemedTk):
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede imprimir sin Producto y Precio.")
             return
-        if not self._is_individual_print_enabled() and not self._validate_special_price(item):
+        individual_print = self._is_individual_print_enabled()
+        special_price_print = self._is_special_price_print_enabled()
+        if special_price_print and not self._validate_special_price(item):
             return
         try:
             # Validaciones
@@ -1630,18 +1936,33 @@ class App(ThemedTk):
                 raise ValueError("Copias fuera de rango (1..20).")
 
             self._update_config_from_ui()
-            self._send_label_to_printer(item, copies=copies)
+            item = self._item_for_selected_print_format(
+                item,
+                individual_print=individual_print,
+                special_price_print=special_price_print,
+            )
+            self._send_label_to_printer(item, copies=copies, individual_print=individual_print)
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error al imprimir: {e}")
 
-    def _print_current_item_silent(self, individual_print: Optional[bool] = None):
+    def _print_current_item_silent(
+        self,
+        individual_print: Optional[bool] = None,
+        special_price_print: Optional[bool] = None,
+    ):
         item = self._collect_item_from_preview()
         if individual_print is None:
             individual_print = self._is_individual_print_enabled()
-        self._print_item_silent(item, individual_print=individual_print)
+        if special_price_print is None:
+            special_price_print = self._is_special_price_print_enabled()
+        self._print_item_silent(
+            item,
+            individual_print=individual_print,
+            special_price_print=special_price_print,
+        )
 
-    def _print_item_silent(self, item: Dict[str, Any], individual_print: bool):
-        item = self._item_for_silent_print(item, individual_print)
+    def _print_item_silent(self, item: Dict[str, Any], individual_print: bool, special_price_print: bool):
+        item = self._item_for_silent_print(item, individual_print, special_price_print)
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             return
 
@@ -1668,14 +1989,21 @@ class App(ThemedTk):
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede mostrar la vista previa sin Producto y Precio.")
             return
-        if not self._is_individual_print_enabled() and not self._validate_special_price(item):
+        individual_print = self._is_individual_print_enabled()
+        special_price_print = self._is_special_price_print_enabled()
+        if special_price_print and not self._validate_special_price(item):
             return
         try:
             price_digits = re.sub(r"[^0-9.]", "", item["PRECIO"])
             if not price_digits:
                 raise ValueError("Precio invalido.")
             self._update_config_from_ui()
-            LabelPrintPreviewWindow(self, item, individual=self._is_individual_print_enabled())
+            item = self._item_for_selected_print_format(
+                item,
+                individual_print=individual_print,
+                special_price_print=special_price_print,
+            )
+            LabelPrintPreviewWindow(self, item, individual=individual_print)
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error al mostrar vista previa: {e}")
 
@@ -1707,6 +2035,7 @@ class App(ThemedTk):
 
     def _clear_preview(self):
         self.current_built_item = {}
+        self.special_price_print_var.set(False)
         self._unlock_preview_fields()
         self.txt_producto.delete("1.0", tk.END)
         self.entry_precio.delete(0, tk.END)
@@ -1718,15 +2047,14 @@ class App(ThemedTk):
         self.entry_vigencia.insert(0, resolve_vigencia_template(self.config_data.get("vigencia_default", DEFAULT_CONFIG["vigencia_default"])))
 
 
-    def _show_item_in_preview(self, item: Optional[Dict[str, Any]], suppress_no_special_message: bool = False):
+    def _show_item_in_preview(self, item: Optional[Dict[str, Any]]):
         if not item: # This can happen if the selection window is closed
             return
             
         # Build text for preview
         built = build_label_text(item, self.config_data)
         self.current_built_item = built
-        if not suppress_no_special_message and not built.get("TIENE_PRECIO_ESPECIAL"):
-            messagebox.showinfo(APP_TITLE, "No existen precios especiales actualizados.")
+        self._sync_special_price_print_option(built)
 
         self._unlock_preview_fields()
 
@@ -1764,8 +2092,6 @@ class App(ThemedTk):
         precio_fmt = _format_price(precio_digits) if precio_digits else ""
         precio_especial_digits = re.sub(r"[^0-9.]", "", precio_especial_raw)
         precio_especial_fmt = _format_price(precio_especial_digits) if precio_especial_digits else ""
-        if not precio_especial_fmt:
-            precio_especial_fmt = precio_fmt
 
         articulo = (self.entry_codigo.get() or "").strip()
         upc = _normalize_upc_digits(self.entry_upc.get() or "")
@@ -1780,7 +2106,7 @@ class App(ThemedTk):
             "UPC": upc,
             "VIGENCIA": vig
         }
-        for key in ("TIENE_PRECIO_ESPECIAL", "PROMO_FECHAINICIO", "PROMO_FECHAFINAL", "PROMO_TERMINOS", "PROMO_TERMINOS2"):
+        for key in ("TIENE_PRECIO_ESPECIAL", "PROMO_CANTIDAD", "PROMO_FECHAINICIO", "PROMO_FECHAFINAL", "PROMO_TERMINOS", "PROMO_TERMINOS2"):
             if key in self.current_built_item:
                 collected[key] = self.current_built_item[key]
         return collected
@@ -1796,6 +2122,7 @@ class App(ThemedTk):
         preferencias = self.config_data.setdefault("preferencias", {})
         preferencias["auto_print_on_scan"] = bool(self.auto_print_var.get())
         preferencias["individual_print"] = self._is_individual_print_enabled()
+        preferencias["special_price_print"] = self._is_special_price_print_enabled()
 
         # The "tamaños" and "espaciados" sections are removed from the new UI,
         # so we don't need to update them anymore. If you want to keep them,

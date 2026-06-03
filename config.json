@@ -9,7 +9,7 @@
   },
   "impresora": {
     "modo": "named",
-    "printer_name": "POS-80"
+    "printer_name": "Microsoft Print to PDF"
   },
   "escpos": {
     "mode": "auto",
@@ -59,11 +59,12 @@
   "corte": "partial",
   "vigencia_default": "Vigente {MES_ABR} {YYYY}",
   "preferencias": {
-    "auto_print_on_scan": true,
+    "auto_print_on_scan": false,
     "mostrar_logo": true,
     "formato_papel_mm": 80,
     "area_util_mm": 76,
     "fuente_predeterminada": "Arial Bold",
-    "individual_print": false
+    "individual_print": false,
+    "special_price_print": false
   }
 }
