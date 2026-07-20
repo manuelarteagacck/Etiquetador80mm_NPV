@@ -1,12 +1,4 @@
 {
-  "conexion_odbc": {
-    "server": ".\\POS",
-    "database": "NPV",
-    "trusted_connection": false,
-    "username": "sa",
-    "driver": "{ODBC Driver 17 for SQL Server}",
-    "password_encrypted": "gAAAAABqBJZsgyjgAaqeNn6KEqJvk1Yg9499qThuvRMng_lCMQVbp5wsgMjSkXVirsuAjXQp2IJY_4oQKoitwXL2ecLGqzpQcA=="
-  },
   "impresora": {
     "modo": "default",
     "printer_name": ""
@@ -55,7 +47,6 @@
     "espacio_arriba_precio": 1,
     "espacio_abajo_precio": 1
   },
-  "tema": "circlek",
   "corte": "partial",
   "vigencia_default": "Vigente {MES_ABR} {YYYY}",
   "preferencias": {
