@@ -52,8 +52,8 @@
     ]
   },
   "espaciados": {
-    "espacio_arriba_precio": 1,
-    "espacio_abajo_precio": 1
+    "espacio_arriba_precio": 0,
+    "espacio_abajo_precio": 0
   },
   "tema": "circlek",
   "corte": "partial",
@@ -68,6 +68,12 @@
     "special_price_print": false
   },
   "layout_impresion": {
+    "version": 3,
+    "papel": {
+      "auto_height": true,
+      "bottom_margin": 4,
+      "minimum_height": 180
+    },
     "lineas_division": {
       "enabled": true,
       "top_y": 6,
@@ -75,41 +81,47 @@
       "thickness": 3
     },
     "normal": {
-      "top_y": 20,
+      "top_y": 0,
+      "draw_top_divider": false,
       "horizontal_margin": 10,
-      "descripcion_font_height": 46,
-      "descripcion_rect_height": 200,
-      "descripcion_advance": 70,
-      "precio_font_height": 92,
-      "precio_rect_height": 118,
+      "descripcion_font_height": 36,
+      "descripcion_min_font_height": 24,
+      "descripcion_single_line": true,
+      "descripcion_rect_height": 46,
+      "descripcion_advance": 44,
+      "precio_font_height": 72,
+      "precio_rect_height": 88,
       "precio_especial_label_font_height": 24,
       "precio_especial_price_font_height": 54,
       "precio_especial_save_font_height": 22,
-      "footer_font_height": 24,
-      "footer_rect_height": 30,
-      "footer_advance": 25,
+      "footer_font_height": 18,
+      "footer_rect_height": 22,
+      "footer_advance": 18,
       "barcode_margin": 35,
-      "barcode_height": 58,
-      "barcode_text_height": 20
+      "barcode_height": 42,
+      "barcode_text_height": 13
     },
     "angosta": {
-      "top_y": 64,
+      "top_y": 0,
+      "draw_top_divider": false,
       "horizontal_margin": 48,
-      "descripcion_font_height": 34,
-      "descripcion_font_height_auto": 30,
-      "descripcion_rect_height": 200,
-      "descripcion_advance": 58,
-      "descripcion_advance_auto": 68,
-      "precio_font_height": 70,
-      "precio_rect_height": 92,
+      "descripcion_font_height": 28,
+      "descripcion_font_height_auto": 26,
+      "descripcion_min_font_height": 20,
+      "descripcion_single_line": true,
+      "descripcion_rect_height": 40,
+      "descripcion_advance": 38,
+      "descripcion_advance_auto": 40,
+      "precio_font_height": 58,
+      "precio_rect_height": 72,
       "precio_especial_label_font_height": 20,
       "precio_especial_price_font_height": 43,
       "precio_especial_save_font_height": 18,
-      "footer_font_height": 19,
-      "footer_rect_height": 30,
-      "footer_advance": 22,
-      "barcode_height": 46,
-      "barcode_text_height": 16
+      "footer_font_height": 16,
+      "footer_rect_height": 20,
+      "footer_advance": 17,
+      "barcode_height": 38,
+      "barcode_text_height": 12
     }
   }
 }

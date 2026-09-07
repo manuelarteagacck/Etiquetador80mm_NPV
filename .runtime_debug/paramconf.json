@@ -1,0 +1,111 @@
+{
+  "impresora": {
+    "modo": "default",
+    "printer_name": ""
+  },
+  "escpos": {
+    "mode": "auto",
+    "serial": {
+      "com": "COM3",
+      "baudrate": 9600,
+      "bytesize": 8,
+      "parity": "N",
+      "stopbits": 1,
+      "timeout": 1
+    },
+    "usb": {
+      "vendor_id": 0,
+      "product_id": 0,
+      "interface": 0,
+      "in_ep": 130,
+      "out_ep": 1
+    },
+    "network": {
+      "ip": "192.168.1.50",
+      "port": 9100
+    }
+  },
+  "tamaños": {
+    "size_producto": [
+      2,
+      2
+    ],
+    "size_precio": [
+      3,
+      3
+    ],
+    "size_codigos": [
+      2,
+      2
+    ],
+    "size_vigencia": [
+      1,
+      1
+    ]
+  },
+  "espaciados": {
+    "espacio_arriba_precio": 1,
+    "espacio_abajo_precio": 1
+  },
+  "corte": "partial",
+  "vigencia_default": "Vigente {MES_ABR} {YYYY}",
+  "preferencias": {
+    "auto_print_on_scan": true,
+    "mostrar_logo": true,
+    "formato_papel_mm": 80,
+    "area_util_mm": 76,
+    "fuente_predeterminada": "Arial Bold",
+    "individual_print": false,
+    "special_price_print": false
+  },
+  "layout_impresion": {
+    "papel": {
+      "auto_height": true,
+      "bottom_margin": 12,
+      "minimum_height": 180
+    },
+    "lineas_division": {
+      "enabled": true,
+      "top_y": 6,
+      "margin": 10,
+      "thickness": 3
+    },
+    "normal": {
+      "top_y": 20,
+      "horizontal_margin": 10,
+      "descripcion_font_height": 46,
+      "descripcion_rect_height": 200,
+      "descripcion_advance": 70,
+      "precio_font_height": 92,
+      "precio_rect_height": 118,
+      "precio_especial_label_font_height": 24,
+      "precio_especial_price_font_height": 54,
+      "precio_especial_save_font_height": 22,
+      "footer_font_height": 24,
+      "footer_rect_height": 30,
+      "footer_advance": 25,
+      "barcode_margin": 35,
+      "barcode_height": 58,
+      "barcode_text_height": 20
+    },
+    "angosta": {
+      "top_y": 64,
+      "horizontal_margin": 48,
+      "descripcion_font_height": 34,
+      "descripcion_font_height_auto": 30,
+      "descripcion_rect_height": 200,
+      "descripcion_advance": 58,
+      "descripcion_advance_auto": 68,
+      "precio_font_height": 70,
+      "precio_rect_height": 92,
+      "precio_especial_label_font_height": 20,
+      "precio_especial_price_font_height": 43,
+      "precio_especial_save_font_height": 18,
+      "footer_font_height": 19,
+      "footer_rect_height": 30,
+      "footer_advance": 22,
+      "barcode_height": 46,
+      "barcode_text_height": 16
+    }
+  }
+}

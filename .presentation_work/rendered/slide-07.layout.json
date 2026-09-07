@@ -1,0 +1,698 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/y1mmva",
+    "id": "y1mmva",
+    "slide": 7,
+    "layoutId": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dcbyh8rq",
+      "id": "1",
+      "name": "slide-7-title",
+      "bbox": [
+        70,
+        42,
+        880,
+        55
+      ],
+      "geometry": "rect",
+      "text": "La promoción comunica el ahorro",
+      "textPreview": "La promoción comunica el ahorro",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 38,
+        "typeface": "Aptos Display",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "La promoción comunica el ahorro"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "La promoción comunica el ahorro",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "typeface": "Aptos Display",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "La promoción comunica el ahorro",
+              "fontSize": 38,
+              "typeface": "Aptos Display",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qp0f6tsf",
+      "id": "2",
+      "bbox": [
+        70,
+        108,
+        76,
+        5
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2231A",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqtwfy9k",
+      "id": "3",
+      "bbox": [
+        1190,
+        662,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "07",
+      "textPreview": "07",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 15,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "07"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "07",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "07",
+              "fontSize": 15,
+              "typeface": "Aptos",
+              "color": "#5D646B",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/dcb2h0je",
+      "id": "4",
+      "bbox": [
+        1015,
+        36,
+        195,
+        50
+      ],
+      "geometry": "rect",
+      "alt": "Logotipo de Circle K",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "rect"
+      },
+      "asset": {
+        "assetId": "79facb1f-3877-421c-a369-97d50dd3240a",
+        "contentType": "image/png",
+        "byteLength": 22840
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gbyl8r2",
+      "id": "5",
+      "bbox": [
+        80,
+        182,
+        390,
+        46
+      ],
+      "geometry": "rect",
+      "text": "Precio nuevo",
+      "textPreview": "Precio nuevo",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 31,
+        "typeface": "Aptos",
+        "color": "#E2231A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Precio nuevo"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Precio nuevo",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Precio nuevo",
+              "fontSize": 31,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/edkfad8b",
+      "id": "6",
+      "bbox": [
+        80,
+        254,
+        390,
+        46
+      ],
+      "geometry": "rect",
+      "text": "Ahorro visible",
+      "textPreview": "Ahorro visible",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 31,
+        "typeface": "Aptos",
+        "color": "#E2231A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Ahorro visible"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Ahorro visible",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Ahorro visible",
+              "fontSize": 31,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zetgji9w",
+      "id": "7",
+      "bbox": [
+        80,
+        326,
+        390,
+        46
+      ],
+      "geometry": "rect",
+      "text": "Precio anterior",
+      "textPreview": "Precio anterior",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 31,
+        "typeface": "Aptos",
+        "color": "#E2231A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Precio anterior"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Precio anterior",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Precio anterior",
+              "fontSize": 31,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8jmxgnqd",
+      "id": "8",
+      "bbox": [
+        80,
+        398,
+        390,
+        46
+      ],
+      "geometry": "rect",
+      "text": "Vigencia y condiciones",
+      "textPreview": "Vigencia y condiciones",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 31,
+        "typeface": "Aptos",
+        "color": "#E2231A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Vigencia y condiciones"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Vigencia y condiciones",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Vigencia y condiciones",
+              "fontSize": 31,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9kvypsry",
+      "id": "9",
+      "bbox": [
+        80,
+        478,
+        360,
+        2
+      ],
+      "geometry": "rect",
+      "fillColor": "#171717",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x4zad8z2",
+      "id": "10",
+      "bbox": [
+        80,
+        510,
+        390,
+        100
+      ],
+      "geometry": "rect",
+      "text": "El formato destaca la promoción sin perder la información operativa.",
+      "textPreview": "El formato destaca la promoción sin perder la información operativa.",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "El formato destaca la promoción sin"
+          },
+          {
+            "index": 2,
+            "text": "perder la información operativa."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "El formato destaca la promoción sin perder la información operativa.",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "El formato destaca la promoción sin perder la información operativa.",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#5D646B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c3q9knih",
+      "id": "11",
+      "bbox": [
+        527,
+        122,
+        666,
+        501
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#D8DBDE",
+      "lineWidth": 1
+    },
+    {
+      "order": 12,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/knehsfat",
+      "id": "12",
+      "bbox": [
+        535,
+        130,
+        650,
+        485
+      ],
+      "geometry": "roundRect",
+      "alt": "Vista previa de etiqueta promocional",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 2474"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "72ba4565-5d29-4b89-a1ee-c308b85c474a",
+        "contentType": "image/png",
+        "byteLength": 265368
+      }
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a18rid0r",
+      "id": "13",
+      "bbox": [
+        535,
+        646,
+        650,
+        26
+      ],
+      "geometry": "rect",
+      "text": "Ejemplo de demostración",
+      "textPreview": "Ejemplo de demostración",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Ejemplo de demostración"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Ejemplo de demostración",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Ejemplo de demostración",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#5D646B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

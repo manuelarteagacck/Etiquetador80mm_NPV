@@ -1,0 +1,371 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/7kyy87",
+    "id": "7kyy87",
+    "slide": 5,
+    "layoutId": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xob2t876",
+      "id": "1",
+      "name": "slide-5-title",
+      "bbox": [
+        70,
+        42,
+        880,
+        55
+      ],
+      "geometry": "rect",
+      "text": "Los precios nuevos aparecen automáticamente al abrir",
+      "textPreview": "Los precios nuevos aparecen automáticamente al abrir",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 38,
+        "typeface": "Aptos Display",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Los precios nuevos aparecen automáticamente al abrir"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Los precios nuevos aparecen automáticamente al abrir",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "typeface": "Aptos Display",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Los precios nuevos aparecen automáticamente al abrir",
+              "fontSize": 38,
+              "typeface": "Aptos Display",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/al03it8v",
+      "id": "2",
+      "bbox": [
+        70,
+        108,
+        76,
+        5
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2231A",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vm9kryp0",
+      "id": "3",
+      "bbox": [
+        1190,
+        662,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "05",
+      "textPreview": "05",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 15,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "05"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "05",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "05",
+              "fontSize": 15,
+              "typeface": "Aptos",
+              "color": "#5D646B",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/lgbe1kjy",
+      "id": "4",
+      "bbox": [
+        1015,
+        36,
+        195,
+        50
+      ],
+      "geometry": "rect",
+      "alt": "Logotipo de Circle K",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "rect"
+      },
+      "asset": {
+        "assetId": "cc1f4c57-76e5-47e4-839f-c719ca663c8e",
+        "contentType": "image/png",
+        "byteLength": 22840
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5cb2x87i",
+      "id": "5",
+      "bbox": [
+        132,
+        122,
+        1016,
+        576
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#D8DBDE",
+      "lineWidth": 1
+    },
+    {
+      "order": 6,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/zetwza18",
+      "id": "6",
+      "bbox": [
+        140,
+        130,
+        1000,
+        560
+      ],
+      "geometry": "roundRect",
+      "alt": "Selección automática de precios nuevos disponibles",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 2143"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "8c7b7f9a-0f9f-4fb1-a824-52daab2e18ad",
+        "contentType": "image/png",
+        "byteLength": 254178
+      }
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jqtkvipc",
+      "id": "7",
+      "bbox": [
+        158,
+        548,
+        964,
+        82
+      ],
+      "geometry": "roundRect",
+      "fillColor": "rgba(255, 255, 255, 0.9098)",
+      "lineColor": "#D8DBDE",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0vy1cjqd",
+      "id": "8",
+      "bbox": [
+        180,
+        570,
+        920,
+        42
+      ],
+      "geometry": "rect",
+      "text": "Seleccionar  ·  revisar vigencia  ·  imprimir en lote",
+      "textPreview": "Seleccionar  ·  revisar vigencia  ·  imprimir en lote",
+      "resolvedFontSize": 25,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 25,
+        "typeface": "Aptos",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Seleccionar  ·  revisar vigencia  ·  imprimir en lote"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Seleccionar  ·  revisar vigencia  ·  imprimir en lote",
+          "resolvedTextStyle": {
+            "fontSize": 25,
+            "typeface": "Aptos",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Seleccionar  ·  revisar vigencia  ·  imprimir en lote",
+              "fontSize": 25,
+              "typeface": "Aptos",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

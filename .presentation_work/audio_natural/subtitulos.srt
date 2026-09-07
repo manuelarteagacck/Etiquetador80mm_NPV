@@ -1,0 +1,114 @@
+﻿1
+00:00:00,400 --> 00:00:06,848
+Etiquetador ochenta milímetros reúne, en una sola
+aplicación, la consulta de productos.
+
+2
+00:00:07,148 --> 00:00:10,461
+También integra la revisión de precios.
+
+3
+00:00:10,661 --> 00:00:15,454
+Y prepara las etiquetas para la operación de tienda de
+Círculo K México.
+
+4
+00:00:17,154 --> 00:00:22,022
+La pantalla principal organiza el trabajo en tres zonas
+claras:
+
+5
+00:00:22,222 --> 00:00:26,725
+búsqueda, vista previa editable y configuración de
+impresión.
+
+6
+00:00:27,045 --> 00:00:32,309
+Así, el aliado mantiene el control del contenido antes de
+generar la etiqueta.
+
+7
+00:00:34,009 --> 00:00:39,217
+El aliado puede localizar un producto por artículo, UPC
+o descripción.
+
+8
+00:00:39,537 --> 00:00:44,885
+Una vez encontrado, la aplicación carga la información
+disponible.
+
+9
+00:00:45,085 --> 00:00:48,019
+Así puede revisarse antes de imprimir.
+
+10
+00:00:49,719 --> 00:00:53,674
+La vista previa muestra la composición completa:
+
+11
+00:00:53,854 --> 00:00:59,448
+producto, precio, vigencia, identificadores y código de
+barras.
+
+12
+00:00:59,768 --> 00:01:04,438
+De esta manera, se confirma visualmente el resultado.
+
+13
+00:01:04,638 --> 00:01:07,866
+Después, puede enviarse a la impresora.
+
+14
+00:01:09,566 --> 00:01:15,000
+Al abrir la aplicación, los precios nuevos detectados se
+presentan en una lista.
+
+15
+00:01:15,320 --> 00:01:19,779
+El aliado puede seleccionar todos o limpiar la selección.
+
+16
+00:01:19,979 --> 00:01:24,057
+También puede imprimir únicamente los artículos elegidos.
+
+17
+00:01:25,757 --> 00:01:31,958
+El módulo de precios especiales vigentes reúne el precio
+regular y el precio especial.
+
+18
+00:01:32,158 --> 00:01:36,517
+Además, muestra la disponibilidad y el periodo
+promocional.
+
+19
+00:01:36,837 --> 00:01:41,551
+La selección múltiple facilita preparar las etiquetas
+necesarias.
+
+20
+00:01:43,251 --> 00:01:49,423
+Cuando existe un precio especial, la etiqueta promocional
+integra el nuevo precio y el ahorro.
+
+21
+00:01:49,703 --> 00:01:54,408
+También presenta el precio anterior y las condiciones de
+vigencia.
+
+22
+00:01:54,608 --> 00:01:57,996
+Todo, en un formato de alta visibilidad.
+
+23
+00:01:59,696 --> 00:02:01,436
+En resumen:
+
+24
+00:02:01,616 --> 00:02:05,450
+buscar, revisar, seleccionar e imprimir.
+
+25
+00:02:05,790 --> 00:02:11,262
+Con este flujo, las etiquetas quedan listas para la
+operación diaria.

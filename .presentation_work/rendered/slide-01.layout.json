@@ -1,0 +1,463 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/oughqj",
+    "id": "oughqj",
+    "slide": 1,
+    "layoutId": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ul8belwb",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        24,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2231A",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/47m1oje9",
+      "id": "2",
+      "bbox": [
+        74,
+        60,
+        255,
+        64
+      ],
+      "geometry": "rect",
+      "alt": "Logotipo de Circle K",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "rect"
+      },
+      "asset": {
+        "assetId": "26feb96f-41cf-4eb9-85b4-c8d5d78671c8",
+        "contentType": "image/png",
+        "byteLength": 22840
+      }
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/w7qtgve1",
+      "id": "3",
+      "name": "cover-title",
+      "bbox": [
+        72,
+        174,
+        460,
+        160
+      ],
+      "geometry": "rect",
+      "text": "Etiquetador\n80 mm",
+      "textPreview": "Etiquetador | 80 mm",
+      "resolvedFontSize": 62,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 62,
+        "typeface": "Aptos Display",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Etiquetador"
+          },
+          {
+            "index": 2,
+            "text": "80 mm"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Etiquetador",
+          "resolvedTextStyle": {
+            "fontSize": 62,
+            "typeface": "Aptos Display",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Etiquetador",
+              "fontSize": 62,
+              "typeface": "Aptos Display",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "80 mm",
+          "resolvedTextStyle": {
+            "fontSize": 62,
+            "typeface": "Aptos Display",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "80 mm",
+              "fontSize": 62,
+              "typeface": "Aptos Display",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ja1crads",
+      "id": "4",
+      "bbox": [
+        76,
+        350,
+        430,
+        74
+      ],
+      "geometry": "rect",
+      "text": "Recorrido funcional para operación en tienda",
+      "textPreview": "Recorrido funcional para operación en tienda",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 27,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Recorrido funcional para operación"
+          },
+          {
+            "index": 2,
+            "text": "en tienda"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Recorrido funcional para operación en tienda",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Recorrido funcional para operación en tienda",
+              "fontSize": 27,
+              "typeface": "Aptos",
+              "color": "#5D646B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i9svi5w7",
+      "id": "5",
+      "bbox": [
+        76,
+        452,
+        124,
+        6
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2231A",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5cjut0vy",
+      "id": "6",
+      "bbox": [
+        76,
+        478,
+        430,
+        42
+      ],
+      "geometry": "rect",
+      "text": "Consulta. Revisa. Imprime.",
+      "textPreview": "Consulta. Revisa. Imprime.",
+      "resolvedFontSize": 25,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 25,
+        "typeface": "Aptos",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Consulta. Revisa. Imprime."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Consulta. Revisa. Imprime.",
+          "resolvedTextStyle": {
+            "fontSize": 25,
+            "typeface": "Aptos",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Consulta. Revisa. Imprime.",
+              "fontSize": 25,
+              "typeface": "Aptos",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4badkfed",
+      "id": "7",
+      "bbox": [
+        582,
+        74,
+        601,
+        521
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#D8DBDE",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/ex43utwb",
+      "id": "8",
+      "bbox": [
+        590,
+        82,
+        585,
+        505
+      ],
+      "geometry": "roundRect",
+      "alt": "Pantalla principal del Etiquetador 80 mm",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 2376"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "a635e4fe-b52f-486d-9673-b867ddc9e8b4",
+        "contentType": "image/png",
+        "byteLength": 108966
+      }
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6dsvm5wj",
+      "id": "9",
+      "bbox": [
+        76,
+        642,
+        260,
+        28
+      ],
+      "geometry": "rect",
+      "text": "CÍRCULO K MÉXICO",
+      "textPreview": "CÍRCULO K MÉXICO",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#E2231A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "CÍRCULO K MÉXICO"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "CÍRCULO K MÉXICO",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "CÍRCULO K MÉXICO",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

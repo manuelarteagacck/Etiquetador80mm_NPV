@@ -1,0 +1,563 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/8u1y4x",
+    "id": "8u1y4x",
+    "slide": 3,
+    "layoutId": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "c002b9b1-9f5a-4ae8-9bd6-6dee4b585145",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "210912c6-f00f-44aa-a59b-de97416c24e8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1ozytwbu",
+      "id": "1",
+      "name": "slide-3-title",
+      "bbox": [
+        70,
+        42,
+        880,
+        55
+      ],
+      "geometry": "rect",
+      "text": "La información del artículo llega lista para revisar",
+      "textPreview": "La información del artículo llega lista para revisar",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 38,
+        "typeface": "Aptos Display",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "La información del artículo llega lista para revisar"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "La información del artículo llega lista para revisar",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "typeface": "Aptos Display",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "La información del artículo llega lista para revisar",
+              "fontSize": 38,
+              "typeface": "Aptos Display",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/el8fyhsj",
+      "id": "2",
+      "bbox": [
+        70,
+        108,
+        76,
+        5
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2231A",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fmhgrmt4",
+      "id": "3",
+      "bbox": [
+        1190,
+        662,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 15,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 15,
+              "typeface": "Aptos",
+              "color": "#5D646B",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/x0bylwrm",
+      "id": "4",
+      "bbox": [
+        1015,
+        36,
+        195,
+        50
+      ],
+      "geometry": "rect",
+      "alt": "Logotipo de Circle K",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "rect"
+      },
+      "asset": {
+        "assetId": "0ffa9328-507d-4a0f-8bae-1b748f70903a",
+        "contentType": "image/png",
+        "byteLength": 22840
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pszyxwb6",
+      "id": "5",
+      "bbox": [
+        62,
+        130,
+        716,
+        574
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#D8DBDE",
+      "lineWidth": 1
+    },
+    {
+      "order": 6,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/by9gjm9g",
+      "id": "6",
+      "bbox": [
+        70,
+        138,
+        700,
+        558
+      ],
+      "geometry": "roundRect",
+      "alt": "Artículo cargado con descripción, precio, código y UPC",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 2151"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "97005f8d-d891-45da-9a0b-ccbbb8b62423",
+        "contentType": "image/png",
+        "byteLength": 117961
+      }
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3qhgv6t0",
+      "id": "7",
+      "bbox": [
+        825,
+        172,
+        340,
+        40
+      ],
+      "geometry": "rect",
+      "text": "Una búsqueda puede iniciar por:",
+      "textPreview": "Una búsqueda puede iniciar por:",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Aptos",
+        "color": "#171717",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Una búsqueda puede iniciar"
+          },
+          {
+            "index": 2,
+            "text": "por:"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Una búsqueda puede iniciar por:",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos",
+            "color": "#171717",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Una búsqueda puede iniciar por:",
+              "fontSize": 24,
+              "typeface": "Aptos",
+              "color": "#171717",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cvah8bah",
+      "id": "8",
+      "bbox": [
+        825,
+        235,
+        320,
+        180
+      ],
+      "geometry": "rect",
+      "text": "Artículo\nUPC\nDescripción",
+      "textPreview": "Artículo | UPC | Descripción",
+      "resolvedFontSize": 35,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 35,
+        "typeface": "Aptos",
+        "color": "#E2231A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Artículo"
+          },
+          {
+            "index": 2,
+            "text": "UPC"
+          },
+          {
+            "index": 3,
+            "text": "Descripción"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Artículo",
+          "resolvedTextStyle": {
+            "fontSize": 35,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Artículo",
+              "fontSize": 35,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "UPC",
+          "resolvedTextStyle": {
+            "fontSize": 35,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "UPC",
+              "fontSize": 35,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "Descripción",
+          "resolvedTextStyle": {
+            "fontSize": 35,
+            "typeface": "Aptos",
+            "color": "#E2231A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Descripción",
+              "fontSize": 35,
+              "typeface": "Aptos",
+              "color": "#E2231A",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dgjy1gb2",
+      "id": "9",
+      "bbox": [
+        825,
+        448,
+        315,
+        2
+      ],
+      "geometry": "rect",
+      "fillColor": "#171717",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pwn65onm",
+      "id": "10",
+      "bbox": [
+        825,
+        478,
+        340,
+        120
+      ],
+      "geometry": "rect",
+      "text": "Descripción, precio, código interno y UPC quedan visibles para confirmación.",
+      "textPreview": "Descripción, precio, código interno y UPC quedan visibles para confirmación.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 21,
+        "typeface": "Aptos",
+        "color": "#5D646B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Descripción, precio, código interno y"
+          },
+          {
+            "index": 2,
+            "text": "UPC quedan visibles para"
+          },
+          {
+            "index": 3,
+            "text": "confirmación."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Descripción, precio, código interno y UPC quedan visibles para confirmación.",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "typeface": "Aptos",
+            "color": "#5D646B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Descripción, precio, código interno y UPC quedan visibles para confirmación.",
+              "fontSize": 21,
+              "typeface": "Aptos",
+              "color": "#5D646B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

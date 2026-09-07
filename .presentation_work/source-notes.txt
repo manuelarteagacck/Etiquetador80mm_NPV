@@ -1,0 +1,22 @@
+Communication job
+By the end, a general public audience should understand how Etiquetador 80mm
+centralizes product lookup, label review, printer selection, new-price review,
+promotion review, and final label preview for Circle K Mexico store operations.
+
+Visual direction
+- Formal 16:9 presentation.
+- White, black, light gray, and Circle K red sampled from the local logo.
+- Large real application captures; minimal supporting shapes and copy.
+- No credentials, connection strings, or configuration secrets are shown.
+
+Sources
+- LOGO CIRCLE K.png: supplied in the project workspace.
+- 01_precios_nuevos.png: captured from the running application on 2026-07-31.
+- 02_principal.png: captured from the running application on 2026-07-31.
+- 03_articulo_cargado.png: captured from the running application on 2026-07-31.
+- 04_vista_previa.png: captured from the running application on 2026-07-31.
+- 05_precios_especiales.png: captured from the running application on 2026-07-31.
+- 06_articulo_promocion.png: captured from the running application on 2026-07-31.
+- 07_vista_previa_promocion.png: captured from the running application on 2026-07-31.
+- Functional statements are based on direct observation of the local application
+  and its visible UI during the same walkthrough.

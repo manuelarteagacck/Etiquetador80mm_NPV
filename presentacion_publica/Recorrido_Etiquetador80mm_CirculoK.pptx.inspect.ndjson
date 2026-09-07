@@ -1,0 +1,101 @@
+{"kind":"deck","id":"pr/jme8nd","name":"Deck"}
+{"kind":"layout","layoutId":"210912c6-f00f-44aa-a59b-de97416c24e8","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"c002b9b1-9f5a-4ae8-9bd6-6dee4b585145","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/oughqj","slide":1,"title":"Etiquetador","textShapes":4}
+{"kind":"shape","id":"sh/ul8belwb","slide":1,"bbox":[0,0,24,720]}
+{"kind":"textbox","id":"sh/w7qtgve1","slide":1,"name":"cover-title","text":"Etiquetador\n80 mm","textPreview":"Etiquetador | 80 mm","textChars":17,"textLines":2,"bbox":[72,174,460,160]}
+{"kind":"textbox","id":"sh/ja1crads","slide":1,"text":"Recorrido funcional para operación en tienda","textPreview":"Recorrido funcional para operación en tienda","textChars":44,"textLines":1,"bbox":[76,350,430,74]}
+{"kind":"shape","id":"sh/i9svi5w7","slide":1,"bbox":[76,452,124,6]}
+{"kind":"textbox","id":"sh/5cjut0vy","slide":1,"text":"Consulta. Revisa. Imprime.","textPreview":"Consulta. Revisa. Imprime.","textChars":26,"textLines":1,"bbox":[76,478,430,42]}
+{"kind":"shape","id":"sh/4badkfed","slide":1,"bbox":[582,74,601,521]}
+{"kind":"textbox","id":"sh/6dsvm5wj","slide":1,"text":"CÍRCULO K MÉXICO","textPreview":"CÍRCULO K MÉXICO","textChars":16,"textLines":1,"bbox":[76,642,260,28]}
+{"kind":"image","id":"im/47m1oje9","slide":1,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[74,60,255,64]}
+{"kind":"image","id":"im/ex43utwb","slide":1,"name":"","geometry":"roundRect","alt":"Pantalla principal del Etiquetador 80 mm","bbox":[590,82,585,505]}
+{"kind":"notes","id":"nt/oughqj","slide":1,"text":"Etiquetador 80 milímetros concentra en una sola aplicación la consulta, revisión e impresión de etiquetas para la operación de tienda de Círculo K México.\n\n[Sources]\n- Logo: LOGO CIRCLE K.png, recurso local proporcionado en el proyecto.\n- Captura: 02_principal.png, aplicación local observada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/h3bbfh","slide":2,"title":"Una sola pantalla concentra el flujo","textShapes":11}
+{"kind":"textbox","id":"sh/vu90jil8","slide":2,"name":"slide-2-title","text":"Una sola pantalla concentra el flujo","textPreview":"Una sola pantalla concentra el flujo","textChars":36,"textLines":1,"bbox":[70,42,880,55]}
+{"kind":"shape","id":"sh/wvi1cnmt","slide":2,"bbox":[70,108,76,5]}
+{"kind":"textbox","id":"sh/hwr2ls3e","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1190,662,40,24]}
+{"kind":"shape","id":"sh/jy9kn2lk","slide":2,"bbox":[62,130,686,571]}
+{"kind":"textbox","id":"sh/50b2pc3a","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[800,178,62,42]}
+{"kind":"textbox","id":"sh/6lkjix4v","slide":2,"text":"Búsqueda","textPreview":"Búsqueda","textChars":8,"textLines":1,"bbox":[880,176,280,38]}
+{"kind":"textbox","id":"sh/rmtkr2lg","slide":2,"text":"Artículo, UPC o descripción","textPreview":"Artículo, UPC o descripción","textChars":27,"textLines":1,"bbox":[880,216,300,54]}
+{"kind":"textbox","id":"sh/ra5wn2tk","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[800,324,62,42]}
+{"kind":"textbox","id":"sh/q9wvexsz","slide":2,"text":"Revisión","textPreview":"Revisión","textChars":8,"textLines":1,"bbox":[880,322,280,38]}
+{"kind":"textbox","id":"sh/dwnepcbq","slide":2,"text":"Datos editables antes de imprimir","textPreview":"Datos editables antes de imprimir","textChars":33,"textLines":1,"bbox":[880,362,300,54]}
+{"kind":"textbox","id":"sh/svexg7a5","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[800,470,62,42]}
+{"kind":"textbox","id":"sh/36lwj2t8","slide":2,"text":"Salida","textPreview":"Salida","textChars":6,"textLines":1,"bbox":[880,468,280,38]}
+{"kind":"textbox","id":"sh/i5cvaxs3","slide":2,"text":"Impresora, formato y número de copias","textPreview":"Impresora, formato y número de copias","textChars":37,"textLines":1,"bbox":[880,508,300,54]}
+{"kind":"image","id":"im/b2xsratw","slide":2,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[1015,36,195,50]}
+{"kind":"image","id":"im/x4fat0bm","slide":2,"name":"","geometry":"roundRect","alt":"Pantalla principal con búsqueda, vista editable e impresión","bbox":[70,138,670,555]}
+{"kind":"notes","id":"nt/h3bbfh","slide":2,"text":"La pantalla principal organiza el trabajo en tres zonas claras: búsqueda, vista previa editable y configuración de impresión. El aliado mantiene control del contenido antes de generar la etiqueta.\n\n[Sources]\n- Captura: 02_principal.png, aplicación local observada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/8u1y4x","slide":3,"title":"La información del artículo llega lista para revisar","textShapes":5}
+{"kind":"textbox","id":"sh/1ozytwbu","slide":3,"name":"slide-3-title","text":"La información del artículo llega lista para revisar","textPreview":"La información del artículo llega lista para revisar","textChars":52,"textLines":1,"bbox":[70,42,880,55]}
+{"kind":"shape","id":"sh/el8fyhsj","slide":3,"bbox":[70,108,76,5]}
+{"kind":"textbox","id":"sh/fmhgrmt4","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1190,662,40,24]}
+{"kind":"shape","id":"sh/pszyxwb6","slide":3,"bbox":[62,130,716,574]}
+{"kind":"textbox","id":"sh/3qhgv6t0","slide":3,"text":"Una búsqueda puede iniciar por:","textPreview":"Una búsqueda puede iniciar por:","textChars":31,"textLines":1,"bbox":[825,172,340,40]}
+{"kind":"textbox","id":"sh/cvah8bah","slide":3,"text":"Artículo\nUPC\nDescripción","textPreview":"Artículo | UPC | Descripción","textChars":24,"textLines":3,"bbox":[825,235,320,180]}
+{"kind":"shape","id":"sh/dgjy1gb2","slide":3,"bbox":[825,448,315,2]}
+{"kind":"textbox","id":"sh/pwn65onm","slide":3,"text":"Descripción, precio, código interno y UPC quedan visibles para confirmación.","textPreview":"Descripción, precio, código interno y UPC quedan visibles para confirmación.","textChars":76,"textLines":1,"bbox":[825,478,340,120]}
+{"kind":"image","id":"im/x0bylwrm","slide":3,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[1015,36,195,50]}
+{"kind":"image","id":"im/by9gjm9g","slide":3,"name":"","geometry":"roundRect","alt":"Artículo cargado con descripción, precio, código y UPC","bbox":[70,138,700,558]}
+{"kind":"notes","id":"nt/8u1y4x","slide":3,"text":"El aliado puede localizar un producto por artículo, UPC o descripción. Una vez encontrado, la aplicación carga la información disponible para su revisión y, cuando corresponde, permite ajustes antes de imprimir.\n\n[Sources]\n- Captura: 03_articulo_cargado.png, búsqueda local realizada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/uktr7y","slide":4,"title":"La vista previa confirma la etiqueta antes de imprimir","textShapes":5}
+{"kind":"textbox","id":"sh/8vm1kn2x","slide":4,"name":"slide-4-title","text":"La vista previa confirma la etiqueta antes de imprimir","textPreview":"La vista previa confirma la etiqueta antes de imprimir","textChars":54,"textLines":1,"bbox":[70,42,880,55]}
+{"kind":"shape","id":"sh/7at0bilc","slide":4,"bbox":[70,108,76,5]}
+{"kind":"textbox","id":"sh/m9kjidkr","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1190,662,40,24]}
+{"kind":"shape","id":"sh/wzm1on29","slide":4,"bbox":[62,142,746,496]}
+{"kind":"textbox","id":"sh/ux4jmxk3","slide":4,"text":"El aliado valida","textPreview":"El aliado valida","textChars":16,"textLines":1,"bbox":[860,178,300,38]}
+{"kind":"textbox","id":"sh/54f2lc3q","slide":4,"text":"Producto\nPrecio\nVigencia\nArtículo y UPC\nCódigo de barras","textPreview":"Producto | Precio | Vigencia | Artículo y UPC | Código de barras","textChars":56,"textLines":5,"bbox":[860,242,315,245]}
+{"kind":"textbox","id":"sh/4361s725","slide":4,"text":"La impresión solo se envía cuando el contenido ya fue revisado.","textPreview":"La impresión solo se envía cuando el contenido ya fue revisado.","textChars":63,"textLines":1,"bbox":[860,535,300,80]}
+{"kind":"image","id":"im/k7mhcjm1","slide":4,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[1015,36,195,50]}
+{"kind":"image","id":"im/y54zat4b","slide":4,"name":"","geometry":"roundRect","alt":"Vista previa de etiqueta normal de 80 mm","bbox":[70,150,730,480]}
+{"kind":"notes","id":"nt/uktr7y","slide":4,"text":"Antes de imprimir, la vista previa muestra la composición completa: producto, precio, vigencia, identificadores y código de barras. Esto permite confirmar visualmente el resultado.\n\n[Sources]\n- Captura: 04_vista_previa.png, vista previa local generada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/7kyy87","slide":5,"title":"Los precios nuevos aparecen automáticamente al abrir","textShapes":3}
+{"kind":"textbox","id":"sh/xob2t876","slide":5,"name":"slide-5-title","text":"Los precios nuevos aparecen automáticamente al abrir","textPreview":"Los precios nuevos aparecen automáticamente al abrir","textChars":52,"textLines":1,"bbox":[70,42,880,55]}
+{"kind":"shape","id":"sh/al03it8v","slide":5,"bbox":[70,108,76,5]}
+{"kind":"textbox","id":"sh/vm9kryp0","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1190,662,40,24]}
+{"kind":"shape","id":"sh/5cb2x87i","slide":5,"bbox":[132,122,1016,576]}
+{"kind":"shape","id":"sh/jqtkvipc","slide":5,"bbox":[158,548,964,82]}
+{"kind":"textbox","id":"sh/0vy1cjqd","slide":5,"text":"Seleccionar  ·  revisar vigencia  ·  imprimir en lote","textPreview":"Seleccionar  ·  revisar vigencia  ·  imprimir en lote","textChars":53,"textLines":1,"bbox":[180,570,920,42]}
+{"kind":"image","id":"im/lgbe1kjy","slide":5,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[1015,36,195,50]}
+{"kind":"image","id":"im/zetwza18","slide":5,"name":"","geometry":"roundRect","alt":"Selección automática de precios nuevos disponibles","bbox":[140,130,1000,560]}
+{"kind":"notes","id":"nt/7kyy87","slide":5,"text":"Al abrir la aplicación, los precios nuevos detectados se presentan en una lista. El aliado puede seleccionar todos, limpiar la selección o enviar únicamente los artículos elegidos a impresión.\n\n[Sources]\n- Captura: 01_precios_nuevos.png, detección automática observada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/dw01h6","slide":6,"title":"Promociones vigentes listas para imprimir","textShapes":3}
+{"kind":"textbox","id":"sh/udw7mlw3","slide":6,"name":"slide-6-title","text":"Promociones vigentes listas para imprimir","textPreview":"Promociones vigentes listas para imprimir","textChars":41,"textLines":1,"bbox":[70,42,880,55]}
+{"kind":"shape","id":"sh/hg7qx0vu","slide":6,"bbox":[70,108,76,5]}
+{"kind":"textbox","id":"sh/wfe9ove9","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1190,662,40,24]}
+{"kind":"shape","id":"sh/m9w7ilw7","slide":6,"bbox":[107,122,1066,580]}
+{"kind":"shape","id":"sh/8bepkbed","slide":6,"bbox":[150,536,980,88]}
+{"kind":"textbox","id":"sh/z6l8n6dg","slide":6,"text":"Precio regular, precio especial, existencia y vigencia en una sola revisión.","textPreview":"Precio regular, precio especial, existencia y vigencia en una sola revisión.","textChars":76,"textLines":1,"bbox":[180,560,920,46]}
+{"kind":"image","id":"im/ytg7el47","slide":6,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[1015,36,195,50]}
+{"kind":"image","id":"im/kvypgvmx","slide":6,"name":"","geometry":"roundRect","alt":"Lista de precios especiales vigentes","bbox":[115,130,1050,564]}
+{"kind":"notes","id":"nt/dw01h6","slide":6,"text":"El módulo de precios especiales vigentes reúne precio regular, precio especial, disponibilidad y periodo promocional. La selección múltiple facilita preparar las etiquetas necesarias.\n\n[Sources]\n- Captura: 05_precios_especiales.png, aplicación local observada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/y1mmva","slide":7,"title":"La promoción comunica el ahorro","textShapes":8}
+{"kind":"textbox","id":"sh/dcbyh8rq","slide":7,"name":"slide-7-title","text":"La promoción comunica el ahorro","textPreview":"La promoción comunica el ahorro","textChars":31,"textLines":1,"bbox":[70,42,880,55]}
+{"kind":"shape","id":"sh/qp0f6tsf","slide":7,"bbox":[70,108,76,5]}
+{"kind":"textbox","id":"sh/rqtwfy9k","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1190,662,40,24]}
+{"kind":"textbox","id":"sh/1gbyl8r2","slide":7,"text":"Precio nuevo","textPreview":"Precio nuevo","textChars":12,"textLines":1,"bbox":[80,182,390,46]}
+{"kind":"textbox","id":"sh/edkfad8b","slide":7,"text":"Ahorro visible","textPreview":"Ahorro visible","textChars":14,"textLines":1,"bbox":[80,254,390,46]}
+{"kind":"textbox","id":"sh/zetgji9w","slide":7,"text":"Precio anterior","textPreview":"Precio anterior","textChars":15,"textLines":1,"bbox":[80,326,390,46]}
+{"kind":"textbox","id":"sh/8jmxgnqd","slide":7,"text":"Vigencia y condiciones","textPreview":"Vigencia y condiciones","textChars":22,"textLines":1,"bbox":[80,398,390,46]}
+{"kind":"shape","id":"sh/9kvypsry","slide":7,"bbox":[80,478,360,2]}
+{"kind":"textbox","id":"sh/x4zad8z2","slide":7,"text":"El formato destaca la promoción sin perder la información operativa.","textPreview":"El formato destaca la promoción sin perder la información operativa.","textChars":68,"textLines":1,"bbox":[80,510,390,100]}
+{"kind":"shape","id":"sh/c3q9knih","slide":7,"bbox":[527,122,666,501]}
+{"kind":"textbox","id":"sh/a18rid0r","slide":7,"text":"Ejemplo de demostración","textPreview":"Ejemplo de demostración","textChars":23,"textLines":1,"bbox":[535,646,650,26]}
+{"kind":"image","id":"im/dcb2h0je","slide":7,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[1015,36,195,50]}
+{"kind":"image","id":"im/knehsfat","slide":7,"name":"","geometry":"roundRect","alt":"Vista previa de etiqueta promocional","bbox":[535,130,650,485]}
+{"kind":"notes","id":"nt/y1mmva","slide":7,"text":"Cuando existe un precio especial, la vista previa promocional integra el nuevo precio, el ahorro, el precio anterior y las condiciones de vigencia en un formato de alta visibilidad.\n\n[Sources]\n- Captura: 07_vista_previa_promocion.png, vista previa local generada el 31/07/2026.\n[/Sources]"}
+{"kind":"slide","id":"sl/retbpd","slide":8,"title":"Un flujo claro de principio a fin","textShapes":7}
+{"kind":"shape","id":"sh/z6d0jq1k","slide":8,"bbox":[0,0,1280,16]}
+{"kind":"textbox","id":"sh/18vilgja","slide":8,"text":"Un flujo claro de principio a fin","textPreview":"Un flujo claro de principio a fin","textChars":33,"textLines":1,"bbox":[78,190,780,72]}
+{"kind":"textbox","id":"sh/qhkzm1kn","slide":8,"text":"BUSCA","textPreview":"BUSCA","textChars":5,"textLines":1,"bbox":[78,330,220,60]}
+{"kind":"textbox","id":"sh/r2tgf618","slide":8,"text":"REVISA","textPreview":"REVISA","textChars":6,"textLines":1,"bbox":[335,330,230,60]}
+{"kind":"textbox","id":"sh/c3mhob2t","slide":8,"text":"SELECCIONA","textPreview":"SELECCIONA","textChars":10,"textLines":1,"bbox":[605,330,300,60]}
+{"kind":"textbox","id":"sh/d4vyhgje","slide":8,"text":"IMPRIME","textPreview":"IMPRIME","textChars":7,"textLines":1,"bbox":[950,330,240,60]}
+{"kind":"shape","id":"sh/2dkzi1kr","slide":8,"bbox":[78,430,1110,3]}
+{"kind":"textbox","id":"sh/3etgb61c","slide":8,"text":"Etiquetador 80 mm centraliza la consulta, la validación visual y la salida de etiquetas para la operación diaria.","textPreview":"Etiquetador 80 mm centraliza la consulta, la validación visual y la salida de etiquetas para la operación diaria.","textChars":113,"textLines":1,"bbox":[78,476,980,102]}
+{"kind":"textbox","id":"sh/f2x8vixc","slide":8,"text":"CÍRCULO K MÉXICO","textPreview":"CÍRCULO K MÉXICO","textChars":16,"textLines":1,"bbox":[78,642,320,30]}
+{"kind":"image","id":"im/tkbq9k7i","slide":8,"name":"","geometry":"rect","alt":"Logotipo de Circle K","bbox":[78,64,270,68]}
+{"kind":"notes","id":"nt/retbpd","slide":8,"text":"En resumen, el Etiquetador 80 milímetros ofrece un recorrido claro: buscar, revisar, seleccionar e imprimir. Una herramienta centralizada para preparar etiquetas en la operación diaria.\n\n[Sources]\n- Logo: LOGO CIRCLE K.png, recurso local proporcionado en el proyecto.\n- Síntesis funcional basada en el recorrido local observado el 31/07/2026.\n[/Sources]"}

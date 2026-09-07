@@ -18,6 +18,7 @@ Requisitos clave:
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -60,6 +61,7 @@ def _missing_dependency_exit(module_name: str, package_name: str) -> None:
 try:
     import win32print
     import win32con
+    import win32gui
     import win32ui
 except ModuleNotFoundError as exc:
     if exc.name and exc.name.startswith("win32"):
@@ -109,6 +111,9 @@ except ModuleNotFoundError as exc:
 APP_TITLE = "Etiquetador 80mm — TIENDA NPV"
 CONFIG_FILENAME = "config.json"
 FERNET_KEY_FILENAME = "config.key"
+PRICE_SOURCE_TABLE = "NPV.dbo.NPVFDPreciosVenta"
+PRICE_BACKUP_TABLE = "NPV.dbo.NPVFDPreciosVentaBkp"
+PRICE_NEW_DAILY_TABLE = "NPV.dbo.NPVFDPreciosNuevosDiarios"
 
 
 # =============================
@@ -185,6 +190,12 @@ DEFAULT_PRINT_CONFIG = {
         "special_price_print": False
     },
     "layout_impresion": {
+        "version": 3,
+        "papel": {
+            "auto_height": True,
+            "bottom_margin": 4,
+            "minimum_height": 180
+        },
         "lineas_division": {
             "enabled": True,
             "top_y": 6,
@@ -192,41 +203,47 @@ DEFAULT_PRINT_CONFIG = {
             "thickness": 3
         },
         "normal": {
-            "top_y": 20,
+            "top_y": 0,
+            "draw_top_divider": False,
             "horizontal_margin": 10,
-            "descripcion_font_height": 46,
-            "descripcion_rect_height": 200,
-            "descripcion_advance": 70,
-            "precio_font_height": 92,
-            "precio_rect_height": 118,
+            "descripcion_font_height": 36,
+            "descripcion_min_font_height": 24,
+            "descripcion_single_line": True,
+            "descripcion_rect_height": 46,
+            "descripcion_advance": 44,
+            "precio_font_height": 72,
+            "precio_rect_height": 88,
             "precio_especial_label_font_height": 24,
             "precio_especial_price_font_height": 54,
             "precio_especial_save_font_height": 22,
-            "footer_font_height": 24,
-            "footer_rect_height": 30,
-            "footer_advance": 25,
+            "footer_font_height": 18,
+            "footer_rect_height": 22,
+            "footer_advance": 18,
             "barcode_margin": 35,
-            "barcode_height": 58,
-            "barcode_text_height": 20
+            "barcode_height": 42,
+            "barcode_text_height": 13
         },
         "angosta": {
-            "top_y": 64,
+            "top_y": 0,
+            "draw_top_divider": False,
             "horizontal_margin": 48,
-            "descripcion_font_height": 34,
-            "descripcion_font_height_auto": 30,
-            "descripcion_rect_height": 200,
-            "descripcion_advance": 58,
-            "descripcion_advance_auto": 68,
-            "precio_font_height": 70,
-            "precio_rect_height": 92,
+            "descripcion_font_height": 28,
+            "descripcion_font_height_auto": 26,
+            "descripcion_min_font_height": 20,
+            "descripcion_single_line": True,
+            "descripcion_rect_height": 40,
+            "descripcion_advance": 38,
+            "descripcion_advance_auto": 40,
+            "precio_font_height": 58,
+            "precio_rect_height": 72,
             "precio_especial_label_font_height": 20,
             "precio_especial_price_font_height": 43,
             "precio_especial_save_font_height": 18,
-            "footer_font_height": 19,
-            "footer_rect_height": 30,
-            "footer_advance": 22,
-            "barcode_height": 46,
-            "barcode_text_height": 16
+            "footer_font_height": 16,
+            "footer_rect_height": 20,
+            "footer_advance": 17,
+            "barcode_height": 38,
+            "barcode_text_height": 12
         }
     }
 }
@@ -268,13 +285,126 @@ def _deep_merge(target: dict, defaults: dict) -> bool:
     return changed
 
 
+def _migrate_print_layout(layout: dict) -> bool:
+    """Actualiza configuraciones conservadas por instalaciones anteriores."""
+    if not isinstance(layout, dict):
+        return False
+
+    try:
+        version = int(layout.get("version", 1))
+    except (TypeError, ValueError):
+        version = 1
+
+    changed = False
+    if version < 2:
+        # Version 2: la descripcion inicia en el borde imprimible y las
+        # etiquetas normal/angosta ya no incluyen la linea de corte superior.
+        for section_name in ("normal", "angosta"):
+            section = layout.setdefault(section_name, {})
+            if not isinstance(section, dict):
+                section = {}
+                layout[section_name] = section
+            section["top_y"] = 0
+            section["draw_top_divider"] = False
+        changed = True
+
+    if version < 3:
+        # Version 3: formato compacto para compensar el espacio mecanico entre
+        # el cabezal y la cuchilla de la impresora POS-80.
+        defaults = DEFAULT_PRINT_CONFIG["layout_impresion"]
+        paper = layout.setdefault("papel", {})
+        if not isinstance(paper, dict):
+            paper = {}
+            layout["papel"] = paper
+        paper["bottom_margin"] = defaults["papel"]["bottom_margin"]
+
+        compact_keys = {
+            "normal": (
+                "top_y",
+                "draw_top_divider",
+                "descripcion_font_height",
+                "descripcion_min_font_height",
+                "descripcion_single_line",
+                "descripcion_rect_height",
+                "descripcion_advance",
+                "precio_font_height",
+                "precio_rect_height",
+                "footer_font_height",
+                "footer_rect_height",
+                "footer_advance",
+                "barcode_height",
+                "barcode_text_height",
+            ),
+            "angosta": (
+                "top_y",
+                "draw_top_divider",
+                "descripcion_font_height",
+                "descripcion_font_height_auto",
+                "descripcion_min_font_height",
+                "descripcion_single_line",
+                "descripcion_rect_height",
+                "descripcion_advance",
+                "descripcion_advance_auto",
+                "precio_font_height",
+                "precio_rect_height",
+                "footer_font_height",
+                "footer_rect_height",
+                "footer_advance",
+                "barcode_height",
+                "barcode_text_height",
+            ),
+        }
+        for section_name, keys in compact_keys.items():
+            section = layout.setdefault(section_name, {})
+            if not isinstance(section, dict):
+                section = {}
+                layout[section_name] = section
+            default_section = defaults[section_name]
+            for key in keys:
+                section[key] = _clone_json(default_section[key])
+        changed = True
+
+    if version < 3:
+        layout["version"] = 3
+
+    return changed
+
+
+def _migrate_print_config(print_cfg: dict) -> bool:
+    if not isinstance(print_cfg, dict):
+        return False
+
+    layout = print_cfg.setdefault("layout_impresion", {})
+    if not isinstance(layout, dict):
+        layout = {}
+        print_cfg["layout_impresion"] = layout
+
+    try:
+        previous_version = int(layout.get("version", 1))
+    except (TypeError, ValueError):
+        previous_version = 1
+
+    changed = _migrate_print_layout(layout)
+    if previous_version < 3:
+        spacing = print_cfg.setdefault("espaciados", {})
+        if not isinstance(spacing, dict):
+            spacing = {}
+            print_cfg["espaciados"] = spacing
+        spacing["espacio_arriba_precio"] = 0
+        spacing["espacio_abajo_precio"] = 0
+        changed = True
+    return changed
+
+
 def _extract_print_config(cfg: dict) -> dict:
     print_cfg = _clone_json(DEFAULT_PRINT_CONFIG)
     for key in PRINT_CONFIG_KEYS:
         if key in cfg:
             print_cfg[key] = _clone_json(cfg[key])
-            if isinstance(print_cfg[key], dict) and isinstance(DEFAULT_PRINT_CONFIG.get(key), dict):
-                _deep_merge(print_cfg[key], DEFAULT_PRINT_CONFIG[key])
+    _migrate_print_config(print_cfg)
+    for key in PRINT_CONFIG_KEYS:
+        if isinstance(print_cfg.get(key), dict) and isinstance(DEFAULT_PRINT_CONFIG.get(key), dict):
+            _deep_merge(print_cfg[key], DEFAULT_PRINT_CONFIG[key])
     return print_cfg
 
 
@@ -296,7 +426,8 @@ def load_print_config(seed_cfg: dict = None) -> dict:
                 data = json.load(f)
             if isinstance(data, dict):
                 print_cfg = data
-                must_save = _deep_merge(print_cfg, DEFAULT_PRINT_CONFIG)
+                must_save = _migrate_print_config(print_cfg)
+                must_save = _deep_merge(print_cfg, DEFAULT_PRINT_CONFIG) or must_save
             else:
                 must_save = True
         except Exception as exc:
@@ -617,6 +748,14 @@ def _split_price(value) -> tuple:
     return (parts[0], parts[1])
 
 
+def _promo_price_text(value) -> str:
+    """Devuelve un precio sin signo para ocupar el espacio de la plantilla."""
+    integer, decimals = _split_price(value)
+    if not integer:
+        return "0.00"
+    return f"{integer}.{decimals}"
+
+
 def _quantity_to_float(value) -> Optional[float]:
     try:
         if value is None:
@@ -788,74 +927,423 @@ def search_items(term: str, cfg: dict = None) -> List[Dict[str, Any]]:
     return results
 
 
+def _quote_sql_identifier(name: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(name or "")):
+        raise ValueError(f"Identificador SQL no valido: {name!r}")
+    return f"[{name}]"
+
+
+def _get_source_price_column(cursor) -> str:
+    rows = cursor.execute(
+        """
+        SELECT COLUMN_NAME
+        FROM NPV.INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = 'dbo'
+          AND TABLE_NAME = 'NPVFDPreciosVenta'
+          AND COLUMN_NAME IN ('PRECIOVENTA', 'PRECIOSVENTA', 'PRECIO')
+        """
+    ).fetchall()
+    available = {str(row.COLUMN_NAME).upper(): str(row.COLUMN_NAME) for row in rows}
+    for candidate in ("PRECIOVENTA", "PRECIOSVENTA", "PRECIO"):
+        if candidate in available:
+            return available[candidate]
+    raise RuntimeError("No se encontro una columna de precio en NPV.dbo.NPVFDPreciosVenta.")
+
+
+def _ensure_price_backup_comparison_schema(cursor, price_column: str) -> bool:
+    """
+    Prepara el respaldo para comparar la clave ARTICULO + FECHAINICIO.
+
+    Devuelve True cuando fue necesario crear o migrar la estructura. Si la
+    tabla no existe se guarda, por articulo, el ultimo precio cuya FECHAINICIO
+    sea estrictamente anterior al dia actual.
+    """
+    quoted_price = _quote_sql_identifier(price_column)
+    table_exists = cursor.execute(
+        f"SELECT OBJECT_ID(N'{PRICE_BACKUP_TABLE}', N'U')"
+    ).fetchval()
+
+    if not table_exists:
+        cursor.execute(
+            f"""
+            SELECT TOP (0)
+                pv.ARTICULO,
+                pv.{quoted_price} AS PRECIOVENTA,
+                pv.FECHAINICIO,
+                pv.FECHAALTA,
+                CAST(GETDATE() AS datetime) AS FECHACOPIA
+            INTO {PRICE_BACKUP_TABLE}
+            FROM {PRICE_SOURCE_TABLE} AS pv;
+
+            ;WITH Fuente AS (
+                SELECT
+                    pv.ARTICULO,
+                    pv.{quoted_price} AS PRECIOVENTA,
+                    pv.FECHAINICIO,
+                    pv.FECHAALTA,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY pv.ARTICULO
+                        ORDER BY
+                            pv.FECHAINICIO DESC,
+                            pv.FECHAALTA DESC,
+                            pv.{quoted_price} DESC
+                    ) AS rn
+                FROM {PRICE_SOURCE_TABLE} AS pv
+                WHERE pv.FECHAINICIO < CONVERT(date, GETDATE())
+            )
+            INSERT INTO {PRICE_BACKUP_TABLE} (
+                ARTICULO,
+                PRECIOVENTA,
+                FECHAINICIO,
+                FECHAALTA,
+                FECHACOPIA
+            )
+            SELECT
+                ARTICULO,
+                PRECIOVENTA,
+                FECHAINICIO,
+                FECHAALTA,
+                GETDATE()
+            FROM Fuente
+            WHERE rn = 1;
+            """
+        )
+        return True
+
+    start_date_exists = cursor.execute(
+        """
+        SELECT COL_LENGTH(
+            N'NPV.dbo.NPVFDPreciosVentaBkp',
+            N'FECHAINICIO'
+        )
+        """
+    ).fetchval()
+    if start_date_exists is not None:
+        return False
+
+    # La version anterior del respaldo guardaba el precio y FECHAALTA pero no
+    # FECHAINICIO. Se conserva esa instantanea y se recupera la fecha del
+    # registro fuente que mejor coincide, de modo que los cambios pendientes
+    # sigan apareciendo despues de actualizar la aplicacion.
+    cursor.execute(
+        f"""
+        ALTER TABLE {PRICE_BACKUP_TABLE}
+            ADD FECHAINICIO datetime NULL;
+        """
+    )
+    cursor.execute(
+        f"""
+        UPDATE b
+        SET FECHAINICIO = origen.FECHAINICIO
+        FROM {PRICE_BACKUP_TABLE} AS b
+        OUTER APPLY (
+            SELECT TOP (1)
+                pv.FECHAINICIO
+            FROM {PRICE_SOURCE_TABLE} AS pv
+            WHERE pv.ARTICULO = b.ARTICULO
+            ORDER BY
+                CASE
+                    WHEN (
+                        pv.FECHAALTA = b.FECHAALTA
+                        OR (pv.FECHAALTA IS NULL AND b.FECHAALTA IS NULL)
+                    )
+                    AND (
+                        pv.{quoted_price} = b.PRECIOVENTA
+                        OR (pv.{quoted_price} IS NULL AND b.PRECIOVENTA IS NULL)
+                    )
+                    THEN 0
+                    WHEN pv.FECHAALTA = b.FECHAALTA THEN 1
+                    WHEN pv.{quoted_price} = b.PRECIOVENTA THEN 2
+                    ELSE 3
+                END,
+                CASE
+                    WHEN pv.FECHAINICIO IS NULL OR pv.FECHAINICIO <= GETDATE()
+                    THEN 0 ELSE 1
+                END,
+                pv.FECHAINICIO DESC,
+                pv.FECHAALTA DESC
+        ) AS origen;
+
+        ;WITH LineaBaseHistorica AS (
+            SELECT
+                pv.ARTICULO,
+                pv.{quoted_price} AS PRECIOVENTA,
+                pv.FECHAINICIO,
+                pv.FECHAALTA,
+                ROW_NUMBER() OVER (
+                    PARTITION BY pv.ARTICULO
+                    ORDER BY
+                        pv.FECHAINICIO DESC,
+                        pv.FECHAALTA DESC,
+                        pv.{quoted_price} DESC
+                ) AS rn
+            FROM {PRICE_SOURCE_TABLE} AS pv
+            WHERE pv.FECHAINICIO < CONVERT(date, GETDATE())
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM {PRICE_BACKUP_TABLE} AS b
+                    WHERE b.ARTICULO = pv.ARTICULO
+              )
+        )
+        INSERT INTO {PRICE_BACKUP_TABLE} (
+            ARTICULO,
+            PRECIOVENTA,
+            FECHAINICIO,
+            FECHAALTA,
+            FECHACOPIA
+        )
+        SELECT
+            ARTICULO,
+            PRECIOVENTA,
+            FECHAINICIO,
+            FECHAALTA,
+            GETDATE()
+        FROM LineaBaseHistorica
+        WHERE rn = 1;
+        """
+    )
+    return True
+
+
+def _ensure_new_daily_prices_table(cursor, price_column: str) -> bool:
+    quoted_price = _quote_sql_identifier(price_column)
+    table_exists = cursor.execute(
+        f"SELECT OBJECT_ID(N'{PRICE_NEW_DAILY_TABLE}', N'U')"
+    ).fetchval()
+    if table_exists:
+        return False
+
+    cursor.execute(
+        f"""
+        SELECT TOP (0)
+            CONVERT(date, GETDATE()) AS FECHADETECCION,
+            pv.ARTICULO,
+            CAST(a.DESCRIPCION AS varchar(255)) AS DESCRIPCION,
+            pv.{quoted_price} AS PRECIOVENTA_ANTERIOR,
+            pv.{quoted_price} AS PRECIOVENTA,
+            pv.FECHAINICIO,
+            pv.FECHAALTA,
+            CAST(GETDATE() AS datetime) AS FECHACOPIA_BKP,
+            CAST(GETDATE() AS datetime) AS FECHAREGISTRO
+        INTO {PRICE_NEW_DAILY_TABLE}
+        FROM {PRICE_SOURCE_TABLE} AS pv
+        LEFT JOIN NPV.dbo.NPVFDArticulos AS a
+            ON a.ARTICULO = pv.ARTICULO;
+        """
+    )
+    return True
+
+
+def _refresh_new_daily_prices_if_changed(cursor, price_column: str) -> tuple:
+    """
+    Reemplaza totalmente la tabla diaria solo cuando hay claves nuevas.
+
+    El respaldo contiene el ultimo precio anterior a hoy. La comparacion toma
+    los precios de hoy en adelante que no tengan la misma clave
+    ARTICULO + FECHAINICIO en el respaldo. Si no hay diferencias, el contenido
+    previo de NPVFDPreciosNuevosDiarios permanece intacto.
+    """
+    quoted_price = _quote_sql_identifier(price_column)
+    cursor.execute(
+        f"""
+        SET XACT_ABORT ON;
+        BEGIN TRANSACTION;
+
+        ;WITH Fuente AS (
+            SELECT
+                pv.ARTICULO,
+                pv.{quoted_price} AS PRECIOVENTA,
+                pv.FECHAINICIO,
+                pv.FECHAALTA,
+                ROW_NUMBER() OVER (
+                    PARTITION BY pv.ARTICULO, pv.FECHAINICIO
+                    ORDER BY pv.FECHAALTA DESC, pv.{quoted_price} DESC
+                ) AS rn
+            FROM {PRICE_SOURCE_TABLE} AS pv
+            WHERE pv.FECHAINICIO >= CONVERT(date, GETDATE())
+              AND NOT EXISTS (
+                SELECT 1
+                FROM {PRICE_BACKUP_TABLE} AS b
+                WHERE b.ARTICULO = pv.ARTICULO
+                  AND (
+                        b.FECHAINICIO = pv.FECHAINICIO
+                     OR (b.FECHAINICIO IS NULL AND pv.FECHAINICIO IS NULL)
+                  )
+            )
+        )
+        SELECT
+            ARTICULO,
+            PRECIOVENTA,
+            FECHAINICIO,
+            FECHAALTA,
+            rn
+        INTO #PreciosCambiados
+        FROM Fuente;
+
+        DECLARE @changed_rows int = (
+            SELECT COUNT(1)
+            FROM #PreciosCambiados
+            WHERE rn = 1
+        );
+        DECLARE @inserted_rows int = 0;
+
+        IF @changed_rows > 0
+        BEGIN
+            DELETE FROM {PRICE_NEW_DAILY_TABLE};
+
+            INSERT INTO {PRICE_NEW_DAILY_TABLE} (
+                FECHADETECCION,
+                ARTICULO,
+                DESCRIPCION,
+                PRECIOVENTA_ANTERIOR,
+                PRECIOVENTA,
+                FECHAINICIO,
+                FECHAALTA,
+                FECHACOPIA_BKP,
+                FECHAREGISTRO
+            )
+            SELECT
+                CONVERT(date, GETDATE()),
+                pc.ARTICULO,
+                COALESCE(NULLIF(a.DESCRIPCION, ''), pc.ARTICULO),
+                anterior.PRECIOVENTA,
+                pc.PRECIOVENTA,
+                pc.FECHAINICIO,
+                pc.FECHAALTA,
+                anterior.FECHACOPIA,
+                GETDATE()
+            FROM #PreciosCambiados AS pc
+            LEFT JOIN NPV.dbo.NPVFDArticulos AS a
+                ON a.ARTICULO = pc.ARTICULO
+            OUTER APPLY (
+                SELECT TOP (1)
+                    b.PRECIOVENTA,
+                    b.FECHACOPIA
+                FROM {PRICE_BACKUP_TABLE} AS b
+                WHERE b.ARTICULO = pc.ARTICULO
+                ORDER BY
+                    CASE
+                        WHEN b.FECHAINICIO <= pc.FECHAINICIO THEN 0
+                        ELSE 1
+                    END,
+                    b.FECHAINICIO DESC,
+                    b.FECHAALTA DESC
+            ) AS anterior
+            WHERE pc.rn = 1;
+
+            SET @inserted_rows = @@ROWCOUNT;
+        END;
+
+        COMMIT TRANSACTION;
+
+        SELECT
+            @changed_rows AS changed_rows,
+            @inserted_rows AS inserted_rows;
+        """
+    )
+    while cursor.description is None:
+        if not cursor.nextset():
+            return 0, 0
+    row = cursor.fetchone()
+    if not row:
+        return 0, 0
+    return int(row.changed_rows or 0), int(row.inserted_rows or 0)
+
+
+def _load_latest_new_daily_price_items(cursor) -> List[Dict[str, Any]]:
+    rows = cursor.execute(
+        f"""
+        ;WITH UltimoLote AS (
+            SELECT MAX(FECHADETECCION) AS FECHADETECCION
+            FROM {PRICE_NEW_DAILY_TABLE}
+        ),
+        PreciosGuardados AS (
+            SELECT
+                nd.ARTICULO,
+                COALESCE(NULLIF(nd.DESCRIPCION, ''), a.DESCRIPCION, nd.ARTICULO) AS DESCRIPCION,
+                nd.PRECIOVENTA,
+                nd.FECHAINICIO,
+                e.EQUIVALENTE AS UPC,
+                ROW_NUMBER() OVER (
+                    PARTITION BY nd.ARTICULO, nd.FECHAINICIO
+                    ORDER BY nd.FECHAREGISTRO DESC, nd.PRECIOVENTA DESC
+                ) AS rn
+            FROM {PRICE_NEW_DAILY_TABLE} AS nd
+            CROSS JOIN UltimoLote AS ul
+            LEFT JOIN NPV.dbo.NPVFDArticulos AS a
+                ON a.ARTICULO = nd.ARTICULO
+            OUTER APPLY (
+                SELECT TOP (1)
+                    ae.EQUIVALENTE
+                FROM NPV.dbo.NPVFDArticulosEquivalentes AS ae
+                WHERE ae.ARTICULO = nd.ARTICULO
+                ORDER BY ae.EQUIVALENTE
+            ) AS e
+            WHERE nd.FECHADETECCION = ul.FECHADETECCION
+        )
+        SELECT
+            ARTICULO,
+            DESCRIPCION,
+            PRECIOVENTA,
+            FECHAINICIO,
+            UPC
+        FROM PreciosGuardados
+        WHERE rn = 1
+        ORDER BY FECHAINICIO, DESCRIPCION, ARTICULO;
+        """
+    ).fetchall()
+
+    results = []
+    for row in rows:
+        fecha_vigencia = (
+            row.FECHAINICIO.strftime("%d/%m/%Y")
+            if row.FECHAINICIO
+            else datetime.date.today().strftime("%d/%m/%Y")
+        )
+        results.append({
+            "ARTICULO": str(row.ARTICULO).strip(),
+            "DESCRIPCION": str(row.DESCRIPCION or "").strip(),
+            "PRECIO": _format_price(row.PRECIOVENTA),
+            "PRECIO_ESPECIAL": "",
+            "TIENE_PRECIO_ESPECIAL": False,
+            "UPC": _normalize_upc_digits(row.UPC or ""),
+            "VIGENCIA": f"Valido a partir de: {fecha_vigencia} Aplican TyC",
+        })
+    return results
+
+
 def fetch_new_daily_price_items(cfg: dict = None) -> List[Dict[str, Any]]:
     """
-    Lee los precios nuevos detectados hoy y los normaliza al formato de etiqueta.
+    Actualiza condicionalmente NPVFDPreciosNuevosDiarios y carga su ultimo lote.
     """
     cfg = cfg or load_config()
     conn = None
-    results = []
-
-    sql = """
-    ;WITH PreciosDiarios AS (
-        SELECT
-            nd.ARTICULO,
-            COALESCE(NULLIF(nd.DESCRIPCION, ''), a.DESCRIPCION) AS DESCRIPCION,
-            nd.PRECIOVENTA,
-            nd.FECHAINICIO,
-            e.EQUIVALENTE AS UPC,
-            ROW_NUMBER() OVER (
-                PARTITION BY nd.ARTICULO, nd.FECHAINICIO
-                ORDER BY nd.FECHAREGISTRO DESC, nd.PRECIOVENTA DESC
-            ) AS rn
-        FROM NPV.dbo.NPVFDPreciosNuevosDiarios AS nd
-        JOIN NPV.dbo.NPVFDArticulos AS a
-            ON a.ARTICULO = nd.ARTICULO
-        OUTER APPLY (
-            SELECT TOP 1 ae.EQUIVALENTE
-            FROM NPV.dbo.NPVFDArticulosEquivalentes AS ae
-            WHERE ae.ARTICULO = nd.ARTICULO
-            ORDER BY ae.EQUIVALENTE
-        ) AS e
-        WHERE nd.FECHADETECCION = CONVERT(date, GETDATE())
-    )
-    SELECT
-        ARTICULO,
-        DESCRIPCION,
-        PRECIOVENTA,
-        FECHAINICIO,
-        UPC
-    FROM PreciosDiarios
-    WHERE rn = 1
-    ORDER BY FECHAINICIO, DESCRIPCION, ARTICULO;
-    """
 
     try:
         conn = _get_connection(cfg)
         cursor = conn.cursor()
-        table_exists = cursor.execute(
-            "SELECT OBJECT_ID(N'NPV.dbo.NPVFDPreciosNuevosDiarios', N'U')"
-        ).fetchval()
-        if not table_exists:
-            return []
+        price_column = _get_source_price_column(cursor)
+        backup_changed = _ensure_price_backup_comparison_schema(cursor, price_column)
+        daily_changed = _ensure_new_daily_prices_table(cursor, price_column)
+        if backup_changed or daily_changed:
+            conn.commit()
 
-        rows = cursor.execute(sql).fetchall()
-        for row in rows:
-            fecha_vigencia = (
-                row.FECHAINICIO.strftime("%d/%m/%Y")
-                if row.FECHAINICIO
-                else datetime.date.today().strftime("%d/%m/%Y")
-            )
-            results.append({
-                "ARTICULO": str(row.ARTICULO).strip(),
-                "DESCRIPCION": str(row.DESCRIPCION or "").strip(),
-                "PRECIO": _format_price(row.PRECIOVENTA),
-                "PRECIO_ESPECIAL": "",
-                "TIENE_PRECIO_ESPECIAL": False,
-                "UPC": _normalize_upc_digits(row.UPC or ""),
-                "VIGENCIA": f"Valido a partir de: {fecha_vigencia} Aplican TyC",
-            })
+        changed_rows, inserted_rows = _refresh_new_daily_prices_if_changed(
+            cursor,
+            price_column,
+        )
+        conn.commit()
+        print(
+            "[INFO] Comparacion de precios al abrir: "
+            f"diferencias={changed_rows}; reemplazados={inserted_rows}."
+        )
+        return _load_latest_new_daily_price_items(cursor)
     except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         try:
             conn_info = _sanitize_connection_string(_build_connection_string(cfg))
         except Exception:
@@ -869,8 +1357,6 @@ def fetch_new_daily_price_items(cfg: dict = None) -> List[Dict[str, Any]]:
     finally:
         if conn:
             conn.close()
-
-    return results
 
 
 # ==============================
@@ -1190,6 +1676,200 @@ def _param_bool(params: dict, key: str, default: bool) -> bool:
     return bool(value)
 
 
+def _estimate_label_height_dots(
+    item_dict: Dict[str, Any],
+    config: dict,
+    printable_width: int,
+    section: str,
+    auto_individual_print: bool = False,
+) -> int:
+    """
+    Calcula el alto real que ocupa la etiqueta.
+
+    En etiquetas normales y angostas el contenido comienza en el borde
+    imprimible; solo se conserva un margen pequeno tras el ultimo elemento.
+    """
+    paper_params = _print_layout_section(config, "papel")
+    minimum_height = _param_int(paper_params, "minimum_height", 180, 1)
+    bottom_margin = _param_int(paper_params, "bottom_margin", 12, 0)
+
+    if (
+        section == "normal"
+        and item_dict.get("PRECIO_ESPECIAL")
+        and Image is not None
+        and ImageWin is not None
+        and os.path.exists(get_promo_background_path())
+    ):
+        promo_height = math.ceil(printable_width * PROMO_TEMPLATE_SIZE[1] / PROMO_TEMPLATE_SIZE[0])
+        return max(minimum_height, promo_height)
+
+    params = _print_layout_section(config, section)
+    y_pos = _param_int(params, "top_y", 0, 0)
+    content_bottom = 0
+
+    if _param_bool(params, "draw_top_divider", False):
+        divider_params = _print_layout_section(config, "lineas_division")
+        if _param_bool(divider_params, "enabled", True):
+            content_bottom = (
+                _param_int(divider_params, "top_y", 6, 0)
+                + _param_int(divider_params, "thickness", 3, 1)
+            )
+
+    if section == "angosta" and auto_individual_print:
+        desc_advance = _param_int(params, "descripcion_advance_auto", 68, 0)
+    else:
+        desc_advance = _param_int(
+            params,
+            "descripcion_advance",
+            70 if section == "normal" else 58,
+            0,
+        )
+    desc_rect_height = _param_int(params, "descripcion_rect_height", 200, 1)
+    content_bottom = max(content_bottom, y_pos + desc_rect_height)
+    y_pos += desc_advance
+
+    font_price_height = _param_int(
+        params,
+        "precio_font_height",
+        92 if section == "normal" else 70,
+        1,
+    )
+    precio_especial = bool(item_dict.get("PRECIO_ESPECIAL"))
+    if precio_especial:
+        # Los tres renglones ANTES/AHORA/AHORRAS avanzan 125 puntos en el
+        # formato normal y 100 en el angosto.
+        special_height = 125 if section == "normal" else 100
+        content_bottom = max(content_bottom, y_pos + special_height)
+        y_pos += special_height
+    else:
+        price_rect_height = _param_int(
+            params,
+            "precio_rect_height",
+            118 if section == "normal" else 92,
+            1,
+        )
+        content_bottom = max(content_bottom, y_pos + price_rect_height)
+        y_pos += font_price_height
+
+    y_pos += _param_int((config or {}).get("espaciados") or {}, "espacio_abajo_precio", 0, 0)
+
+    footer_rect_height = _param_int(params, "footer_rect_height", 30, 1)
+    footer_advance = _param_int(
+        params,
+        "footer_advance",
+        25 if section == "normal" else 22,
+        0,
+    )
+    footer_items = [
+        item_dict.get("VIGENCIA", ""),
+        f"{item_dict.get('ARTICULO', '')}   {item_dict.get('UPC', '')}",
+    ]
+    for text in footer_items:
+        if not str(text or "").strip():
+            continue
+        content_bottom = max(content_bottom, y_pos + footer_rect_height)
+        y_pos += footer_advance
+
+    if not precio_especial and _barcode_value_for_item(item_dict):
+        y_pos += 4
+        barcode_height = _param_int(
+            params,
+            "barcode_height",
+            58 if section == "normal" else 46,
+            1,
+        )
+        barcode_text_height = _param_int(
+            params,
+            "barcode_text_height",
+            20 if section == "normal" else 16,
+            1,
+        )
+        content_bottom = max(content_bottom, y_pos + barcode_height + barcode_text_height + 6)
+
+    return max(minimum_height, content_bottom + bottom_margin)
+
+
+def _create_label_printer_dc(
+    printer_name: str,
+    item_dict: Dict[str, Any],
+    config: dict,
+    section: str,
+    auto_individual_print: bool = False,
+):
+    """
+    Crea un DC temporal con el alto justo de la etiqueta.
+
+    El DEVMODE se aplica solo al trabajo actual. No cambia el formulario ni
+    las preferencias permanentes configuradas en Windows.
+    """
+    fallback_dc = win32ui.CreateDC()
+    fallback_dc.CreatePrinterDC(printer_name)
+
+    paper_params = _print_layout_section(config, "papel")
+    if not _param_bool(paper_params, "auto_height", True):
+        return fallback_dc
+
+    printable_width = fallback_dc.GetDeviceCaps(win32con.HORZRES)
+    dpi_x = max(1, fallback_dc.GetDeviceCaps(win32con.LOGPIXELSX))
+    dpi_y = max(1, fallback_dc.GetDeviceCaps(win32con.LOGPIXELSY))
+    desired_height = _estimate_label_height_dots(
+        item_dict,
+        config,
+        printable_width,
+        section,
+        auto_individual_print=auto_individual_print,
+    )
+
+    printer_handle = None
+    try:
+        printer_handle = win32print.OpenPrinter(printer_name)
+        printer_info = win32print.GetPrinter(printer_handle, 2)
+        devmode = printer_info.get("pDevMode")
+        if devmode is None:
+            raise RuntimeError("El controlador no devolvio parametros DEVMODE.")
+
+        # PaperWidth/PaperLength usan decimas de milimetro. math.ceil evita
+        # perder un punto por redondeo en controladores termicos de 203 dpi.
+        paper_width = max(1, math.ceil(printable_width * 254 / dpi_x))
+        paper_length = max(1, math.ceil(desired_height * 254 / dpi_y))
+        devmode.Fields |= (
+            win32con.DM_PAPERSIZE
+            | win32con.DM_PAPERWIDTH
+            | win32con.DM_PAPERLENGTH
+        )
+        devmode.PaperSize = 0
+        devmode.PaperWidth = paper_width
+        devmode.PaperLength = paper_length
+
+        raw_dc = win32gui.CreateDC("WINSPOOL", printer_name, devmode)
+        sized_dc = win32ui.CreateDCFromHandle(raw_dc)
+        actual_height = sized_dc.GetDeviceCaps(win32con.VERTRES)
+        if actual_height < desired_height:
+            sized_dc.DeleteDC()
+            raise RuntimeError(
+                f"El controlador acepto solo {actual_height} de {desired_height} puntos."
+            )
+
+        fallback_dc.DeleteDC()
+        print(
+            "[INFO] Alto automatico de etiqueta: "
+            f"{actual_height} puntos ({paper_length / 10:.1f} mm)."
+        )
+        return sized_dc
+    except Exception as exc:
+        print(
+            "[WARN] La impresora no acepto el alto automatico; "
+            f"se usara su formulario actual: {exc}"
+        )
+        return fallback_dc
+    finally:
+        if printer_handle is not None:
+            try:
+                win32print.ClosePrinter(printer_handle)
+            except Exception:
+                pass
+
+
 def draw_print_area_divider(hDC, printable_width: int, y: int, config: dict = None, margin: int = None, thickness: int = None) -> None:
     params = _print_layout_section(config, "lineas_division")
     if not _param_bool(params, "enabled", True):
@@ -1249,11 +1929,10 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int, c
     precio = item_dict.get("PRECIO", "$0.00")
     precio_especial = item_dict.get("PRECIO_ESPECIAL", "")
     
-    p_antes_int, p_antes_dec = _split_price(precio)
-    p_ahora_int, p_ahora_dec = _split_price(precio_especial)
-    
     ahorro_val = max(0, (_price_to_float(precio) or 0) - (_price_to_float(precio_especial) or 0))
-    p_ahorra_int, p_ahorra_dec = _split_price(ahorro_val)
+    texto_ahorro = _promo_price_text(ahorro_val)
+    texto_ahora = _promo_price_text(precio_especial)
+    texto_antes = _promo_price_text(precio)
     promo_terminos = item_dict.get("PROMO_TERMINOS", "")
     promo_terminos2 = item_dict.get("PROMO_TERMINOS2", "")
 
@@ -1262,25 +1941,16 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int, c
     hDC.SetBkMode(win32con.OPAQUE)
 
     font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(100), "weight": win32con.FW_BOLD})
-    font_savings_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(100), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_savings)
-    hDC.DrawText(p_ahorra_int, rect(940, 70, 1245, 200), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-    hDC.SelectObject(font_savings_dec)
-    hDC.DrawText(p_ahorra_dec, rect(1310, 70, 1460, 200), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(texto_ahorro, rect(1010, 65, 1480, 205), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(166), "weight": win32con.FW_BOLD})
-    font_now_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(166), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_now)
-    hDC.DrawText(p_ahora_int, rect(300, 285, 1065, 480), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-    hDC.SelectObject(font_now_dec)
-    hDC.DrawText(p_ahora_dec, rect(1210, 285, 1405, 480), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(texto_ahora, rect(340, 315, 1480, 500), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(66), "weight": win32con.FW_BOLD})
-    font_before_dec = win32ui.CreateFont({"name": "Arial", "height": font_height(66), "weight": win32con.FW_BOLD})
     hDC.SelectObject(font_before)
-    hDC.DrawText(p_antes_int, rect(1020, 720, 1230, 810), win32con.DT_RIGHT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-    hDC.SelectObject(font_before_dec)
-    hDC.DrawText(p_antes_dec, rect(1300, 720, 1390, 810), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    hDC.DrawText(texto_antes, rect(1010, 715, 1410, 815), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
     hDC.SetBkMode(win32con.TRANSPARENT)
 
@@ -1310,15 +1980,18 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
         raise RuntimeError("No se pudo determinar la impresora a usar.")
 
     try:
-        hDC = win32ui.CreateDC()
-        hDC.CreatePrinterDC(printer_name)
+        hDC = _create_label_printer_dc(
+            printer_name,
+            item_dict,
+            config,
+            "normal",
+        )
         
         # Obtener el área de impresión real en píxeles
         printable_width = hDC.GetDeviceCaps(win32con.HORZRES)
         hDC.SetMapMode(win32con.MM_TEXT)
         hDC.SetBkMode(win32con.TRANSPARENT)
         normal_params = _print_layout_section(config, "normal")
-        divider_params = _print_layout_section(config, "lineas_division")
         horizontal_margin = _param_int(normal_params, "horizontal_margin", 10, 0)
 
         for i in range(copies):
@@ -1330,8 +2003,10 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
                 hDC.EndDoc()
                 continue
 
-            draw_print_area_divider(hDC, printable_width, _param_int(divider_params, "top_y", 6, 0), config)
-            y_pos = _param_int(normal_params, "top_y", 20, 0)
+            if _param_bool(normal_params, "draw_top_divider", False):
+                divider_params = _print_layout_section(config, "lineas_division")
+                draw_print_area_divider(hDC, printable_width, _param_int(divider_params, "top_y", 6, 0), config)
+            y_pos = _param_int(normal_params, "top_y", 0, 0)
             normal_price_label = not bool(item_dict.get("PRECIO_ESPECIAL"))
 
             # --- 2. Dibujar Descripción ---
@@ -1441,21 +2116,27 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
         raise RuntimeError("No se pudo determinar la impresora a usar.")
 
     try:
-        hDC = win32ui.CreateDC()
-        hDC.CreatePrinterDC(printer_name)
+        hDC = _create_label_printer_dc(
+            printer_name,
+            item_dict,
+            config,
+            "angosta",
+            auto_individual_print=auto_individual_print,
+        )
         
         printable_width = hDC.GetDeviceCaps(win32con.HORZRES)
         hDC.SetMapMode(win32con.MM_TEXT)
         hDC.SetBkMode(win32con.TRANSPARENT)
         small_params = _print_layout_section(config, "angosta")
-        divider_params = _print_layout_section(config, "lineas_division")
 
         for i in range(copies):
             hDC.StartDoc(f"Etiqueta NPV Individual ({i+1}/{copies})")
             hDC.StartPage()
 
-            draw_print_area_divider(hDC, printable_width, _param_int(divider_params, "top_y", 6, 0), config)
-            y_pos = _param_int(small_params, "top_y", 64, 0)
+            if _param_bool(small_params, "draw_top_divider", False):
+                divider_params = _print_layout_section(config, "lineas_division")
+                draw_print_area_divider(hDC, printable_width, _param_int(divider_params, "top_y", 6, 0), config)
+            y_pos = _param_int(small_params, "top_y", 0, 0)
             normal_price_label = not bool(item_dict.get("PRECIO_ESPECIAL"))
             horizontal_margin = _param_int(small_params, "horizontal_margin", 48, 0)
 
@@ -1664,6 +2345,94 @@ def enable_treeview_sorting(tree, columns, labels):
     refresh_headings()
 
 
+def get_window_work_area(window) -> tuple:
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            class RECT(ctypes.Structure):
+                _fields_ = [
+                    ("left", ctypes.c_long),
+                    ("top", ctypes.c_long),
+                    ("right", ctypes.c_long),
+                    ("bottom", ctypes.c_long),
+                ]
+
+            rect = RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(48, 0, ctypes.byref(rect), 0):
+                return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
+        except Exception:
+            pass
+
+    return 0, 0, window.winfo_screenwidth(), window.winfo_screenheight()
+
+
+def fit_window_to_screen(window, desired_width: int, desired_height: int, min_width: int, min_height: int, margin: int = 24):
+    window.update_idletasks()
+    work_left, work_top, work_width, work_height = get_window_work_area(window)
+    max_width = max(360, work_width - (margin * 2))
+    max_height = max(320, work_height - (margin * 2))
+    safe_min_width = min(min_width, max_width)
+    safe_min_height = min(min_height, max_height)
+    width = min(max(desired_width, safe_min_width), max_width)
+    height = min(max(desired_height, safe_min_height), max_height)
+    x = work_left + max(margin, int((work_width - width) / 2))
+    y = work_top + max(margin, int((work_height - height) / 2))
+    window.minsize(int(safe_min_width), int(safe_min_height))
+    window.maxsize(int(work_width), int(work_height))
+    window.geometry(f"{int(width)}x{int(height)}+{int(x)}+{int(y)}")
+
+
+CHECKBOX_UNCHECKED = "[ ]"
+CHECKBOX_CHECKED = "[X]"
+CHECKBOX_SELECTED_TAG = "checked"
+
+
+class CheckboxTreeSelectionMixin:
+    def _setup_checkbox_selection(self):
+        self._checked_tree_items = set()
+        self.tree.bind("<Button-1>", self._on_checkbox_tree_click)
+        self.tree.tag_configure(CHECKBOX_SELECTED_TAG, background="#E8F2FF")
+
+    def _set_checkbox_checked(self, item_id: str, checked: bool):
+        if not item_id:
+            return
+        values = list(self.tree.item(item_id, "values"))
+        if not values:
+            return
+        values[0] = CHECKBOX_CHECKED if checked else CHECKBOX_UNCHECKED
+        self.tree.item(
+            item_id,
+            values=values,
+            tags=(CHECKBOX_SELECTED_TAG,) if checked else (),
+        )
+        if checked:
+            self._checked_tree_items.add(item_id)
+        else:
+            self._checked_tree_items.discard(item_id)
+
+    def _on_checkbox_tree_click(self, event):
+        if self.tree.identify_region(event.x, event.y) not in ("cell", "tree"):
+            return None
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            return None
+        self._set_checkbox_checked(item_id, item_id not in self._checked_tree_items)
+        return "break"
+
+    def _set_all_checkbox_items(self, checked: bool):
+        for item_id in self.tree.get_children(""):
+            self._set_checkbox_checked(item_id, checked)
+
+    def _checked_item_indices(self) -> List[int]:
+        checked = set(getattr(self, "_checked_tree_items", set()))
+        return [
+            self._tree_item_to_index[item_id]
+            for item_id in self.tree.get_children("")
+            if item_id in checked and item_id in self._tree_item_to_index
+        ]
+
+
 # ==============================
 # UI (Tkinter)
 # ==============================
@@ -1672,7 +2441,6 @@ class ResultSelectionWindow(tk.Toplevel):
     def __init__(self, parent, results, callback):
         super().__init__(parent)
         self.title("Seleccionar Artículo")
-        self.geometry("800x450")
         self.transient(parent)
         self.grab_set()
         self.configure(bg="#F0F0F0")
@@ -1739,6 +2507,7 @@ class ResultSelectionWindow(tk.Toplevel):
 
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        fit_window_to_screen(self, desired_width=800, desired_height=450, min_width=640, min_height=360)
         self.wait_window()
 
     def on_select(self, event=None):
@@ -1761,12 +2530,10 @@ class ResultSelectionWindow(tk.Toplevel):
         self.destroy()
 
 
-class NewDailyPricesSelectionWindow(tk.Toplevel):
+class NewDailyPricesSelectionWindow(CheckboxTreeSelectionMixin, tk.Toplevel):
     def __init__(self, parent, items: List[Dict[str, Any]]):
         super().__init__(parent)
         self.title("Precios Nuevos")
-        self.geometry("980x520")
-        self.minsize(780, 420)
         self.transient(parent)
         self.grab_set()
         self.configure(bg="#F0F0F0")
@@ -1786,8 +2553,10 @@ class NewDailyPricesSelectionWindow(tk.Toplevel):
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
 
-        columns = ("articulo", "descripcion", "precio", "vigencia", "upc")
-        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="extended")
+        columns = ("seleccion", "articulo", "descripcion", "precio", "vigencia", "upc")
+        sortable_columns = ("articulo", "descripcion", "precio", "vigencia", "upc")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="none")
+        self.tree.heading("seleccion", text="")
         self.tree.heading("articulo", text="Articulo")
         self.tree.heading("descripcion", text="Descripcion")
         self.tree.heading("precio", text="Precio")
@@ -1795,7 +2564,7 @@ class NewDailyPricesSelectionWindow(tk.Toplevel):
         self.tree.heading("upc", text="UPC")
         enable_treeview_sorting(
             self.tree,
-            columns,
+            sortable_columns,
             {
                 "articulo": "Articulo",
                 "descripcion": "Descripcion",
@@ -1804,6 +2573,7 @@ class NewDailyPricesSelectionWindow(tk.Toplevel):
                 "upc": "UPC",
             },
         )
+        self.tree.column("seleccion", width=48, anchor="center", stretch=False)
         self.tree.column("articulo", width=120, anchor="w", stretch=False)
         self.tree.column("descripcion", width=360, anchor="w")
         self.tree.column("precio", width=90, anchor="e", stretch=False)
@@ -1813,13 +2583,17 @@ class NewDailyPricesSelectionWindow(tk.Toplevel):
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        x_scrollbar = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
+        x_scrollbar.grid(row=1, column=0, sticky="ew")
+        self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=x_scrollbar.set)
+        self._setup_checkbox_selection()
 
         for index, item in enumerate(self.items):
             iid = self.tree.insert(
                 "",
                 "end",
                 values=(
+                    CHECKBOX_UNCHECKED,
                     item.get("ARTICULO", ""),
                     item.get("DESCRIPCION", ""),
                     _format_currency(item.get("PRECIO", "")),
@@ -1839,25 +2613,20 @@ class NewDailyPricesSelectionWindow(tk.Toplevel):
 
         self.bind("<Escape>", lambda event: self.on_close())
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        fit_window_to_screen(self, desired_width=980, desired_height=520, min_width=720, min_height=400)
         self.wait_window()
 
     def select_all(self):
-        self.tree.selection_set(*self.tree.get_children())
+        self._set_all_checkbox_items(True)
 
     def clear_selection(self):
-        self.tree.selection_remove(*self.tree.selection())
+        self._set_all_checkbox_items(False)
 
     def on_print_selected(self):
-        selected = self.tree.selection()
-        if not selected:
+        selected_indices = self._checked_item_indices()
+        if not selected_indices:
             messagebox.showwarning(APP_TITLE, "Selecciona al menos un articulo para imprimir.", parent=self)
             return
-        selected_set = set(selected)
-        selected_indices = [
-            self._tree_item_to_index[iid]
-            for iid in self.tree.get_children("")
-            if iid in selected_set and iid in self._tree_item_to_index
-        ]
         self.selected_items = [self.items[index] for index in selected_indices]
         self.destroy()
 
@@ -1866,12 +2635,10 @@ class NewDailyPricesSelectionWindow(tk.Toplevel):
         self.destroy()
 
 
-class CurrentSpecialPricesSelectionWindow(tk.Toplevel):
+class CurrentSpecialPricesSelectionWindow(CheckboxTreeSelectionMixin, tk.Toplevel):
     def __init__(self, parent, items: List[Dict[str, Any]]):
         super().__init__(parent)
         self.title("Precios Especiales Vigentes")
-        self.geometry("1100x560")
-        self.minsize(860, 440)
         self.transient(parent)
         self.grab_set()
         self.configure(bg="#F0F0F0")
@@ -1891,8 +2658,10 @@ class CurrentSpecialPricesSelectionWindow(tk.Toplevel):
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
 
-        columns = ("articulo", "descripcion", "precio", "especial", "disponible", "vigencia", "upc")
-        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="extended")
+        columns = ("seleccion", "articulo", "descripcion", "precio", "especial", "disponible", "vigencia", "upc")
+        sortable_columns = ("articulo", "descripcion", "precio", "especial", "disponible", "vigencia", "upc")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="none")
+        self.tree.heading("seleccion", text="")
         self.tree.heading("articulo", text="Articulo")
         self.tree.heading("descripcion", text="Descripcion")
         self.tree.heading("precio", text="Precio")
@@ -1902,7 +2671,7 @@ class CurrentSpecialPricesSelectionWindow(tk.Toplevel):
         self.tree.heading("upc", text="UPC")
         enable_treeview_sorting(
             self.tree,
-            columns,
+            sortable_columns,
             {
                 "articulo": "Articulo",
                 "descripcion": "Descripcion",
@@ -1913,6 +2682,7 @@ class CurrentSpecialPricesSelectionWindow(tk.Toplevel):
                 "upc": "UPC",
             },
         )
+        self.tree.column("seleccion", width=48, anchor="center", stretch=False)
         self.tree.column("articulo", width=120, anchor="w", stretch=False)
         self.tree.column("descripcion", width=320, anchor="w")
         self.tree.column("precio", width=90, anchor="e", stretch=False)
@@ -1924,13 +2694,17 @@ class CurrentSpecialPricesSelectionWindow(tk.Toplevel):
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        x_scrollbar = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
+        x_scrollbar.grid(row=1, column=0, sticky="ew")
+        self.tree.configure(yscrollcommand=scrollbar.set, xscrollcommand=x_scrollbar.set)
+        self._setup_checkbox_selection()
 
         for index, item in enumerate(self.items):
             iid = self.tree.insert(
                 "",
                 "end",
                 values=(
+                    CHECKBOX_UNCHECKED,
                     item.get("ARTICULO", ""),
                     item.get("DESCRIPCION", ""),
                     _format_currency(item.get("PRECIO", "")),
@@ -1952,25 +2726,20 @@ class CurrentSpecialPricesSelectionWindow(tk.Toplevel):
 
         self.bind("<Escape>", lambda event: self.on_close())
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        fit_window_to_screen(self, desired_width=1100, desired_height=560, min_width=760, min_height=420)
         self.wait_window()
 
     def select_all(self):
-        self.tree.selection_set(*self.tree.get_children())
+        self._set_all_checkbox_items(True)
 
     def clear_selection(self):
-        self.tree.selection_remove(*self.tree.selection())
+        self._set_all_checkbox_items(False)
 
     def on_print_selected(self):
-        selected = self.tree.selection()
-        if not selected:
+        selected_indices = self._checked_item_indices()
+        if not selected_indices:
             messagebox.showwarning(APP_TITLE, "Selecciona al menos un articulo para imprimir.", parent=self)
             return
-        selected_set = set(selected)
-        selected_indices = [
-            self._tree_item_to_index[iid]
-            for iid in self.tree.get_children("")
-            if iid in selected_set and iid in self._tree_item_to_index
-        ]
         self.selected_items = [self.items[index] for index in selected_indices]
         self.destroy()
 
@@ -1995,7 +2764,9 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         if self.item.get("PRECIO_ESPECIAL"):
             label_height = int(label_width * PROMO_TEMPLATE_SIZE[1] / PROMO_TEMPLATE_SIZE[0])
         else:
-            label_height = 360 if individual else 350
+            # La vista previa refleja el formato compacto sin cabecera ni
+            # linea de corte superior.
+            label_height = 300 if individual else 360
         window_width = label_width + 60
         window_height = label_height + 95
         self.geometry(f"{window_width}x{window_height}")
@@ -2096,48 +2867,33 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             special_price = self.item.get("PRECIO_ESPECIAL") or ""
             ahorro_val = max(0, (_price_to_float(price) or 0) - (_price_to_float(special_price) or 0))
             
-            p_ahorra_int, p_ahorra_dec = _split_price(ahorro_val)
-            p_ahora_int, p_ahora_dec = _split_price(special_price)
-            p_antes_int, p_antes_dec = _split_price(price)
+            texto_ahorro = _promo_price_text(ahorro_val)
+            texto_ahora = _promo_price_text(special_price)
+            texto_antes = _promo_price_text(price)
 
             desc = (self.item.get("DESCRIPCION") or "").upper()
             promo_terminos = self.item.get("PROMO_TERMINOS") or ""
             promo_terminos2 = self.item.get("PROMO_TERMINOS2") or ""
 
             # AHORRA
-            self.canvas.create_rectangle(cx(940), cy(70), cx(1245), cy(200), fill="#FFFFFF", outline="")
-            self.canvas.create_rectangle(cx(1310), cy(70), cx(1460), cy(200), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1010), cy(65), cx(1480), cy(205), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(1245), cy(135), text=p_ahorra_int, anchor="e",
-                font=("Arial", int(100 * sy), "bold"), fill="#111111"
-            )
-            self.canvas.create_text(
-                cx(1310), cy(135), text=p_ahorra_dec, anchor="w",
-                font=("Arial", int(100 * sy), "bold"), fill="#111111"
+                cx(1245), cy(135), text=texto_ahorro, anchor="center",
+                font=("Arial", -max(1, int(100 * sy)), "bold"), fill="#111111"
             )
 
             # PRECIO NUEVO
-            self.canvas.create_rectangle(cx(300), cy(285), cx(1065), cy(480), fill="#FFFFFF", outline="")
-            self.canvas.create_rectangle(cx(1210), cy(285), cx(1405), cy(480), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(340), cy(315), cx(1480), cy(500), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(1065), cy(382), text=p_ahora_int, anchor="e",
-                font=("Arial", int(166 * sy), "bold"), fill="#111111"
-            )
-            self.canvas.create_text(
-                cx(1210), cy(382), text=p_ahora_dec, anchor="w",
-                font=("Arial", int(166 * sy), "bold"), fill="#111111"
+                cx(910), cy(407), text=texto_ahora, anchor="center",
+                font=("Arial", -max(1, int(166 * sy)), "bold"), fill="#111111"
             )
 
             # PRECIO ANTERIOR
-            self.canvas.create_rectangle(cx(1020), cy(720), cx(1230), cy(810), fill="#FFFFFF", outline="")
-            self.canvas.create_rectangle(cx(1300), cy(720), cx(1390), cy(810), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(1010), cy(715), cx(1410), cy(815), fill="#FFFFFF", outline="")
             self.canvas.create_text(
-                cx(1230), cy(765), text=p_antes_int, anchor="e",
-                font=("Arial", int(66 * sy), "bold"), fill="#111111"
-            )
-            self.canvas.create_text(
-                cx(1300), cy(765), text=p_antes_dec, anchor="w",
-                font=("Arial", int(66 * sy), "bold"), fill="#111111"
+                cx(1210), cy(765), text=texto_antes, anchor="center",
+                font=("Arial", -max(1, int(66 * sy)), "bold"), fill="#111111"
             )
 
             if desc:
@@ -2148,7 +2904,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                     width=cx(1425),
                     anchor="center",
                     justify="center",
-                    font=("Arial", max(10, int(PROMO_DESCRIPTION_FONT_SIZE * sy)), "bold"),
+                    font=("Arial", -max(10, int(PROMO_DESCRIPTION_FONT_SIZE * sy)), "bold"),
                     fill="#111111",
                 )
 
@@ -2160,7 +2916,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                     width=cx(1395),
                     anchor="nw",
                     justify="left",
-                    font=("Arial", max(9, int(28 * sy)), "bold"),
+                    font=("Arial", -max(9, int(28 * sy)), "bold"),
                     fill="#111111",
                 )
                 if promo_terminos2:
@@ -2171,7 +2927,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                         width=cx(1395),
                         anchor="nw",
                         justify="left",
-                        font=("Arial", max(9, int(28 * sy)), "bold"),
+                        font=("Arial", -max(9, int(28 * sy)), "bold"),
                         fill="#111111",
                     )
 
@@ -2196,7 +2952,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         vigencia = self.item.get("VIGENCIA") or ""
         codes = f"{self.item.get('ARTICULO', '')}   {self.item.get('UPC', '')}".strip()
 
-        desc_top = y1 + (64 if self.individual else 24)
+        desc_top = y1 + 8
         desc_size = self._fit_text_size(desc, 49, 23 if self.individual else 28, 14 if self.individual else 15)
         self.canvas.create_text(
             center_x,
@@ -2248,7 +3004,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             price_size = self._fit_text_size(price, 8, 56 if self.individual else 68, 42 if self.individual else 50)
             self.canvas.create_text(
                 center_x,
-                y1 + (116 if self.individual else 102),
+                y1 + (62 if self.individual else 86),
                 text=price,
                 width=text_right - text_left,
                 anchor="n",
@@ -2256,7 +3012,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                 font=("Arial", price_size, "bold"),
                 fill="#111111",
             )
-            footer_y = y1 + (210 if self.individual else 220)
+            footer_y = y1 + (156 if self.individual else 204)
 
         footer_size = 12 if self.individual else 14
         if vigencia:
@@ -2303,10 +3059,7 @@ class App(ThemedTk):
         super().__init__(theme="arc")
         self.title(APP_TITLE)
         apply_window_icon(self)
-        screen_height = self.winfo_screenheight()
-        window_height = min(720, max(520, screen_height - 120))
-        self.geometry(f"900x{window_height}")
-        self.minsize(720, 480)
+        fit_window_to_screen(self, desired_width=900, desired_height=720, min_width=720, min_height=480, margin=16)
         self.resizable(True, True)
 
         self.config_data = load_config()
@@ -2316,6 +3069,7 @@ class App(ThemedTk):
         self.populate_printers()
         self.refresh_default_printer_note()
         self._show_config_load_warnings()
+        self.after(500, self._check_new_prices_on_startup)
 
     def configure_styles(self):
         style = ttk.Style(self)
@@ -2583,11 +3337,10 @@ class App(ThemedTk):
         return bool((item or {}).get("PRECIO_ESPECIAL"))
 
     def _sync_special_price_print_option(self, item: Dict[str, Any]):
+        self.special_price_print_var.set(False)
         if self._item_has_special_price(item):
             self.chk_special_price_print.configure(state="normal")
-            self.special_price_print_var.set(True)
             return
-        self.special_price_print_var.set(False)
         self.chk_special_price_print.configure(state="disabled")
 
     def on_individual_print_change(self):
@@ -2737,7 +3490,11 @@ class App(ThemedTk):
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error en impresión de prueba: {e}")
 
-    def on_new_prices_print_click(self):
+    def _check_new_prices_on_startup(self):
+        if self.winfo_exists():
+            self.on_new_prices_print_click(show_empty=False)
+
+    def on_new_prices_print_click(self, show_empty: bool = True):
         try:
             copies = int(self.spin_copias.get())
             if copies < 1 or copies > 20:
@@ -2746,7 +3503,8 @@ class App(ThemedTk):
             self._update_config_from_ui()
             items = fetch_new_daily_price_items(self.config_data)
             if not items:
-                messagebox.showinfo(APP_TITLE, "No hay precios nuevos diarios para imprimir hoy.")
+                if show_empty:
+                    messagebox.showinfo(APP_TITLE, "No hay cambios de precios pendientes para imprimir.")
                 return
 
             selection_window = NewDailyPricesSelectionWindow(self, items)
