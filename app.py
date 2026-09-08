@@ -190,7 +190,7 @@ DEFAULT_PRINT_CONFIG = {
         "special_price_print": False
     },
     "layout_impresion": {
-        "version": 3,
+        "version": 4,
         "papel": {
             "auto_height": True,
             "bottom_margin": 4,
@@ -231,9 +231,9 @@ DEFAULT_PRINT_CONFIG = {
             "descripcion_font_height_auto": 26,
             "descripcion_min_font_height": 20,
             "descripcion_single_line": True,
-            "descripcion_rect_height": 40,
-            "descripcion_advance": 38,
-            "descripcion_advance_auto": 40,
+            "descripcion_rect_height": 28,
+            "descripcion_advance": 30,
+            "descripcion_advance_auto": 30,
             "precio_font_height": 58,
             "precio_rect_height": 72,
             "precio_especial_label_font_height": 20,
@@ -364,8 +364,22 @@ def _migrate_print_layout(layout: dict) -> bool:
                 section[key] = _clone_json(default_section[key])
         changed = True
 
-    if version < 3:
-        layout["version"] = 3
+    if version < 4:
+        # Version 4: elimina el espacio interno restante sobre el contenido
+        # angosto reduciendo solo el rectangulo y avance de descripcion.
+        defaults = DEFAULT_PRINT_CONFIG["layout_impresion"]["angosta"]
+        narrow = layout.setdefault("angosta", {})
+        if not isinstance(narrow, dict):
+            narrow = {}
+            layout["angosta"] = narrow
+        for key in (
+            "descripcion_rect_height",
+            "descripcion_advance",
+            "descripcion_advance_auto",
+        ):
+            narrow[key] = _clone_json(defaults[key])
+        layout["version"] = 4
+        changed = True
 
     return changed
 
@@ -1676,6 +1690,53 @@ def _param_bool(params: dict, key: str, default: bool) -> bool:
     return bool(value)
 
 
+def _description_font_gdi(
+    hDC,
+    text: str,
+    params: dict,
+    requested_height: int,
+    available_width: int,
+):
+    """Crea una fuente que mantenga la descripcion compacta y legible."""
+    single_line = _param_bool(params, "descripcion_single_line", True)
+    min_height = _param_int(
+        params,
+        "descripcion_min_font_height",
+        max(1, requested_height),
+        1,
+    )
+    min_height = min(min_height, requested_height)
+    current_height = requested_height
+    created_fonts = []
+
+    while True:
+        selected_font = win32ui.CreateFont({
+            "name": "Arial",
+            "height": current_height,
+            "weight": win32con.FW_BOLD,
+        })
+        # Conservar las fuentes candidatas hasta seleccionar la definitiva
+        # evita liberar un objeto GDI mientras aun esta asociado al DC.
+        created_fonts.append(selected_font)
+        hDC.SelectObject(selected_font)
+        if not single_line or not text:
+            return selected_font, win32con.DT_CENTER | win32con.DT_WORDBREAK
+
+        try:
+            text_width = int(hDC.GetTextExtent(text)[0])
+        except Exception:
+            text_width = 0
+        if text_width <= max(1, available_width) or current_height <= min_height:
+            flags = (
+                win32con.DT_CENTER
+                | win32con.DT_SINGLELINE
+                | win32con.DT_VCENTER
+                | win32con.DT_END_ELLIPSIS
+            )
+            return selected_font, flags
+        current_height = max(min_height, current_height - 2)
+
+
 def _estimate_label_height_dots(
     item_dict: Dict[str, Any],
     config: dict,
@@ -1691,7 +1752,7 @@ def _estimate_label_height_dots(
     """
     paper_params = _print_layout_section(config, "papel")
     minimum_height = _param_int(paper_params, "minimum_height", 180, 1)
-    bottom_margin = _param_int(paper_params, "bottom_margin", 12, 0)
+    bottom_margin = _param_int(paper_params, "bottom_margin", 4, 0)
 
     if (
         section == "normal"
@@ -1716,22 +1777,27 @@ def _estimate_label_height_dots(
             )
 
     if section == "angosta" and auto_individual_print:
-        desc_advance = _param_int(params, "descripcion_advance_auto", 68, 0)
+        desc_advance = _param_int(params, "descripcion_advance_auto", 30, 0)
     else:
         desc_advance = _param_int(
             params,
             "descripcion_advance",
-            70 if section == "normal" else 58,
+            44 if section == "normal" else 30,
             0,
         )
-    desc_rect_height = _param_int(params, "descripcion_rect_height", 200, 1)
+    desc_rect_height = _param_int(
+        params,
+        "descripcion_rect_height",
+        46 if section == "normal" else 28,
+        1,
+    )
     content_bottom = max(content_bottom, y_pos + desc_rect_height)
     y_pos += desc_advance
 
     font_price_height = _param_int(
         params,
         "precio_font_height",
-        92 if section == "normal" else 70,
+        72 if section == "normal" else 58,
         1,
     )
     precio_especial = bool(item_dict.get("PRECIO_ESPECIAL"))
@@ -1745,7 +1811,7 @@ def _estimate_label_height_dots(
         price_rect_height = _param_int(
             params,
             "precio_rect_height",
-            118 if section == "normal" else 92,
+            88 if section == "normal" else 72,
             1,
         )
         content_bottom = max(content_bottom, y_pos + price_rect_height)
@@ -1753,11 +1819,16 @@ def _estimate_label_height_dots(
 
     y_pos += _param_int((config or {}).get("espaciados") or {}, "espacio_abajo_precio", 0, 0)
 
-    footer_rect_height = _param_int(params, "footer_rect_height", 30, 1)
+    footer_rect_height = _param_int(
+        params,
+        "footer_rect_height",
+        22 if section == "normal" else 20,
+        1,
+    )
     footer_advance = _param_int(
         params,
         "footer_advance",
-        25 if section == "normal" else 22,
+        18 if section == "normal" else 17,
         0,
     )
     footer_items = [
@@ -1775,13 +1846,13 @@ def _estimate_label_height_dots(
         barcode_height = _param_int(
             params,
             "barcode_height",
-            58 if section == "normal" else 46,
+            42 if section == "normal" else 38,
             1,
         )
         barcode_text_height = _param_int(
             params,
             "barcode_text_height",
-            20 if section == "normal" else 16,
+            13 if section == "normal" else 12,
             1,
         )
         content_bottom = max(content_bottom, y_pos + barcode_height + barcode_text_height + 6)
@@ -2011,22 +2082,27 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
 
             # --- 2. Dibujar Descripción ---
             try:
-                desc_font_height = _param_int(normal_params, "descripcion_font_height", 46, 1)
-                desc_rect_height = _param_int(normal_params, "descripcion_rect_height", 200, 1)
-                desc_advance = _param_int(normal_params, "descripcion_advance", 70, 0)
-                font_desc = win32ui.CreateFont({"name": "Arial", "height": desc_font_height, "weight": win32con.FW_BOLD})
-                hDC.SelectObject(font_desc)
+                desc_font_height = _param_int(normal_params, "descripcion_font_height", 36, 1)
+                desc_rect_height = _param_int(normal_params, "descripcion_rect_height", 46, 1)
+                desc_advance = _param_int(normal_params, "descripcion_advance", 44, 0)
                 desc = (item_dict.get("DESCRIPCION") or "").upper()
                 print(f"Dibujando descripción: {desc}") # <-- DEBUG
+                _, desc_flags = _description_font_gdi(
+                    hDC,
+                    desc,
+                    normal_params,
+                    desc_font_height,
+                    printable_width - (2 * horizontal_margin),
+                )
                 rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + desc_rect_height)
-                hDC.DrawText(desc, rect, win32con.DT_CENTER | win32con.DT_WORDBREAK)
+                hDC.DrawText(desc, rect, desc_flags)
                 y_pos += desc_advance
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar la descripción: {e}")
 
             # --- 3. Dibujar Precio ---
             try:
-                font_price_height = _param_int(normal_params, "precio_font_height", 92, 1)
+                font_price_height = _param_int(normal_params, "precio_font_height", 72, 1)
                 font_price = win32ui.CreateFont({"name": "Arial", "height": font_price_height, "weight": win32con.FW_BOLD})
                 hDC.SelectObject(font_price)
                 precio = _format_currency(item_dict.get("PRECIO", "$0.00"))
@@ -2048,7 +2124,7 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
                     hDC.DrawText(f"AHORRAS: {_format_price(ahorro)}", (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + 30), win32con.DT_CENTER | win32con.DT_SINGLELINE)
                     y_pos += 30 - font_price_height
                 else:
-                    rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + _param_int(normal_params, "precio_rect_height", 118, 1))
+                    rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + _param_int(normal_params, "precio_rect_height", 88, 1))
                     hDC.DrawText(precio, rect, win32con.DT_CENTER | win32con.DT_SINGLELINE)
                 
                 # Se usa la configuración de espaciado. El avance es altura de fuente + espacio.
@@ -2060,9 +2136,9 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
 
             # --- 4. Dibujar Pie de página ---
             try:
-                footer_rect_height = _param_int(normal_params, "footer_rect_height", 30, 1)
-                footer_advance = _param_int(normal_params, "footer_advance", 25, 0)
-                font_footer = win32ui.CreateFont({"name": "Arial", "height": _param_int(normal_params, "footer_font_height", 24, 1), "weight": win32con.FW_NORMAL})
+                footer_rect_height = _param_int(normal_params, "footer_rect_height", 22, 1)
+                footer_advance = _param_int(normal_params, "footer_advance", 18, 0)
+                font_footer = win32ui.CreateFont({"name": "Arial", "height": _param_int(normal_params, "footer_font_height", 18, 1), "weight": win32con.FW_NORMAL})
                 hDC.SelectObject(font_footer)
                 
                 footer_items = [
@@ -2087,8 +2163,8 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
                             barcode_margin,
                             y_pos,
                             printable_width - barcode_margin,
-                            bar_height=_param_int(normal_params, "barcode_height", 58, 1),
-                            text_height=_param_int(normal_params, "barcode_text_height", 20, 1),
+                            bar_height=_param_int(normal_params, "barcode_height", 42, 1),
+                            text_height=_param_int(normal_params, "barcode_text_height", 13, 1),
                         )
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar el pie de página: {e}")
@@ -2142,21 +2218,26 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
 
             # --- 2. Dibujar Descripción ---
             try:
-                desc_font_height = _param_int(small_params, "descripcion_font_height_auto", 30, 1) if auto_individual_print else _param_int(small_params, "descripcion_font_height", 34, 1)
-                desc_advance = _param_int(small_params, "descripcion_advance_auto", 68, 0) if auto_individual_print else _param_int(small_params, "descripcion_advance", 58, 0)
-                desc_rect_height = _param_int(small_params, "descripcion_rect_height", 200, 1)
-                font_desc = win32ui.CreateFont({"name": "Arial", "height": desc_font_height, "weight": win32con.FW_BOLD})
-                hDC.SelectObject(font_desc)
+                desc_font_height = _param_int(small_params, "descripcion_font_height_auto", 26, 1) if auto_individual_print else _param_int(small_params, "descripcion_font_height", 28, 1)
+                desc_advance = _param_int(small_params, "descripcion_advance_auto", 30, 0) if auto_individual_print else _param_int(small_params, "descripcion_advance", 30, 0)
+                desc_rect_height = _param_int(small_params, "descripcion_rect_height", 28, 1)
                 desc = (item_dict.get("DESCRIPCION") or "").upper()
+                _, desc_flags = _description_font_gdi(
+                    hDC,
+                    desc,
+                    small_params,
+                    desc_font_height,
+                    printable_width - (2 * horizontal_margin),
+                )
                 rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + desc_rect_height)
-                hDC.DrawText(desc, rect, win32con.DT_CENTER | win32con.DT_WORDBREAK)
+                hDC.DrawText(desc, rect, desc_flags)
                 y_pos += desc_advance
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar la descripción (individual): {e}")
 
             # --- 3. Dibujar Precio ---
             try:
-                font_price_height = _param_int(small_params, "precio_font_height", 70, 1)
+                font_price_height = _param_int(small_params, "precio_font_height", 58, 1)
                 font_price = win32ui.CreateFont({"name": "Arial", "height": font_price_height, "weight": win32con.FW_BOLD})
                 hDC.SelectObject(font_price)
                 precio = _format_currency(item_dict.get("PRECIO", "$0.00"))
@@ -2178,7 +2259,7 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
                     hDC.DrawText(f"AHORRAS: {_format_price(ahorro)}", (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + 25), win32con.DT_CENTER | win32con.DT_SINGLELINE)
                     y_pos += 25 - font_price_height
                 else:
-                    rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + _param_int(small_params, "precio_rect_height", 92, 1))
+                    rect = (horizontal_margin, y_pos, printable_width - horizontal_margin, y_pos + _param_int(small_params, "precio_rect_height", 72, 1))
                     hDC.DrawText(precio, rect, win32con.DT_CENTER | win32con.DT_SINGLELINE)
                 
                 espaciados = config.get("espaciados", {})
@@ -2189,9 +2270,9 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
 
             # --- 4. Dibujar Pie de página ---
             try:
-                footer_rect_height = _param_int(small_params, "footer_rect_height", 30, 1)
-                footer_advance = _param_int(small_params, "footer_advance", 22, 0)
-                font_footer = win32ui.CreateFont({"name": "Arial", "height": _param_int(small_params, "footer_font_height", 19, 1), "weight": win32con.FW_NORMAL})
+                footer_rect_height = _param_int(small_params, "footer_rect_height", 20, 1)
+                footer_advance = _param_int(small_params, "footer_advance", 17, 0)
+                font_footer = win32ui.CreateFont({"name": "Arial", "height": _param_int(small_params, "footer_font_height", 16, 1), "weight": win32con.FW_NORMAL})
                 hDC.SelectObject(font_footer)
                 
                 footer_items = [
@@ -2215,8 +2296,8 @@ def print_label_gdi_small(item_dict: Dict[str, Any], config: dict, copies: int =
                             horizontal_margin,
                             y_pos,
                             printable_width - horizontal_margin,
-                            bar_height=_param_int(small_params, "barcode_height", 46, 1),
-                            text_height=_param_int(small_params, "barcode_text_height", 16, 1),
+                            bar_height=_param_int(small_params, "barcode_height", 38, 1),
+                            text_height=_param_int(small_params, "barcode_text_height", 12, 1),
                         )
             except Exception as e:
                 print(f"[ERROR] No se pudo dibujar el pie de página (individual): {e}")
@@ -2766,7 +2847,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         else:
             # La vista previa refleja el formato compacto sin cabecera ni
             # linea de corte superior.
-            label_height = 300 if individual else 360
+            label_height = 232 if individual else 280
         window_width = label_width + 60
         window_height = label_height + 95
         self.geometry(f"{window_width}x{window_height}")
@@ -2952,7 +3033,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         vigencia = self.item.get("VIGENCIA") or ""
         codes = f"{self.item.get('ARTICULO', '')}   {self.item.get('UPC', '')}".strip()
 
-        desc_top = y1 + 8
+        desc_top = y1 if self.individual else y1 + 4
         desc_size = self._fit_text_size(desc, 49, 23 if self.individual else 28, 14 if self.individual else 15)
         self.canvas.create_text(
             center_x,
@@ -3004,7 +3085,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             price_size = self._fit_text_size(price, 8, 56 if self.individual else 68, 42 if self.individual else 50)
             self.canvas.create_text(
                 center_x,
-                y1 + (62 if self.individual else 86),
+                y1 + (32 if self.individual else 50),
                 text=price,
                 width=text_right - text_left,
                 anchor="n",
@@ -3012,7 +3093,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                 font=("Arial", price_size, "bold"),
                 fill="#111111",
             )
-            footer_y = y1 + (156 if self.individual else 204)
+            footer_y = y1 + (92 if self.individual else 132)
 
         footer_size = 12 if self.individual else 14
         if vigencia:
@@ -3026,7 +3107,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                 font=("Arial", footer_size),
                 fill="#111111",
             )
-            footer_y += 26
+            footer_y += 22
 
         if codes:
             self.canvas.create_text(
@@ -3039,7 +3120,7 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                 font=("Arial", footer_size),
                 fill="#111111",
             )
-            footer_y += 23
+            footer_y += 19
 
         if not special_price:
             barcode_value = _barcode_value_for_item(self.item)
@@ -3049,8 +3130,8 @@ class LabelPrintPreviewWindow(tk.Toplevel):
                     text_left,
                     footer_y + 4,
                     text_right,
-                    42 if self.individual else 50,
-                    10 if self.individual else 12,
+                    38 if self.individual else 42,
+                    10 if self.individual else 11,
                 )
 
 

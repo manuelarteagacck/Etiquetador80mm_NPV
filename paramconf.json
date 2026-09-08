@@ -59,7 +59,7 @@
     "special_price_print": false
   },
   "layout_impresion": {
-    "version": 3,
+    "version": 4,
     "papel": {
       "auto_height": true,
       "bottom_margin": 4,
@@ -100,9 +100,9 @@
       "descripcion_font_height_auto": 26,
       "descripcion_min_font_height": 20,
       "descripcion_single_line": true,
-      "descripcion_rect_height": 40,
-      "descripcion_advance": 38,
-      "descripcion_advance_auto": 40,
+      "descripcion_rect_height": 28,
+      "descripcion_advance": 30,
+      "descripcion_advance_auto": 30,
       "precio_font_height": 58,
       "precio_rect_height": 72,
       "precio_especial_label_font_height": 20,
