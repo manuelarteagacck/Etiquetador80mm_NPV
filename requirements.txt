@@ -6,3 +6,4 @@ ttkthemes==3.2.2
 pyinstaller
 Pillow
 cryptography
+gdown==6.0.0

@@ -12,7 +12,7 @@ Instrucciones:
 4. (Opcional) Empaquetar la interfaz. Es obligatorio incluir los datos de
    python-escpos (en particular escpos/capabilities.json):
 
-   pyinstaller -F -w --collect-data escpos --add-data "back5.png;." --add-data "loguito.png;." --add-data "ticket_printer.ico;." --icon ticket_printer.ico -n Etiquetador80mm app.py
+   pyinstaller -F -w --collect-data escpos --add-data "precioesp.jpeg;." --add-data "loguito.png;." --add-data "ticket_printer.ico;." --icon ticket_printer.ico -n Etiquetador80mm app.py
 
 Importante: conserva config.key junto con config.json. Sin esa llave no se puede
 descifrar password_encrypted.
@@ -45,3 +45,22 @@ Parámetros de línea de comandos del instalador:
   /pasive o --pasive     Alias compatible con la grafía solicitada.
   /silent o --silent     Instala completamente en segundo plano.
   /uninstall             Desinstala y conserva los archivos de configuración.
+
+Instalador en línea
+-------------------
+El instalador adicional que obtiene la versión publicada desde Google Drive es:
+
+  Instalador_Online_Etiquetador80mm.exe
+
+Descarga únicamente Instalador_Etiquetador80mm.exe de la carpeta configurada,
+valida que sea un ejecutable de Windows, registra su tamaño y SHA-256 y lo
+ejecuta en modo silencioso. El registro se guarda en:
+
+  %ProgramData%\Etiquetador80mm\Logs\instalador_online.log
+
+Parámetros:
+
+  /passive o --passive   Descarga e instala sin preguntas, mostrando progreso.
+  /silent o --silent     Descarga e instala completamente en segundo plano.
+  /quiet o --quiet       Alias del modo silencioso.
+  --self-test            Comprueba la conexión y localiza el archivo sin instalar.

@@ -33,11 +33,17 @@ CONFIG_FILENAME = "config.json"
 FERNET_KEY_FILENAME = "config.key"
 PARAMCONF_FILENAME = "paramconf.json"
 CONFIG_LOAD_WARNINGS = []
-PROMO_BACKGROUND_FILENAME = "back5.png"
-PROMO_TEMPLATE_SIZE = (1585, 992)
+PROMO_BACKGROUND_FILENAME = "precioesp.jpeg"
+PROMO_TEMPLATE_SIZE = (945, 472)
 LOGUITO_FILENAME = "loguito.png"
 APP_ICON_FILENAME = "ticket_printer.ico"
-PROMO_DESCRIPTION_FONT_SIZE = 60
+PROMO_COLOR_BACKGROUND = (253, 254, 255)
+PROMO_COLOR_DARK = (0, 34, 33)
+PROMO_COLOR_PANEL = (66, 70, 69)
+PROMO_COLOR_LIGHT = (253, 254, 255)
+REGULAR_TEMPLATE_SIZE = (945, 472)
+REGULAR_COLOR_BACKGROUND = (253, 254, 255)
+REGULAR_COLOR_DARK = (0, 34, 33)
 
 
 def _missing_dependency_exit(module_name: str, package_name: str) -> None:
@@ -762,12 +768,41 @@ def _split_price(value) -> tuple:
     return (parts[0], parts[1])
 
 
-def _promo_price_text(value) -> str:
-    """Devuelve un precio sin signo para ocupar el espacio de la plantilla."""
+def _promo_price_parts(value) -> tuple:
+    """Devuelve moneda, enteros y centavos para el precio principal de oferta."""
     integer, decimals = _split_price(value)
     if not integer:
-        return "0.00"
-    return f"{integer}.{decimals}"
+        return ("$", "0", ".00")
+    return ("$", integer, f".{decimals or '00'}")
+
+
+def _promo_description_lines(value, single_line_limit: int = 26) -> tuple:
+    """Divide una descripcion larga en dos lineas equilibradas."""
+    text = " ".join(str(value or "").strip().upper().split())
+    if not text:
+        return ()
+    words = text.split()
+    if len(text) <= single_line_limit or len(words) < 2:
+        return (text,)
+
+    best_lines = (text,)
+    best_score = None
+    for index in range(1, len(words)):
+        first = " ".join(words[:index])
+        second = " ".join(words[index:])
+        score = (max(len(first), len(second)), abs(len(first) - len(second)))
+        if best_score is None or score < best_score:
+            best_score = score
+            best_lines = (first, second)
+    return best_lines
+
+
+def _compose_compact_promo_background(source):
+    """Prepara la plantilla conservando dimensiones y colores originales."""
+    source = source.convert("RGB")
+    if source.size != PROMO_TEMPLATE_SIZE:
+        source = source.resize(PROMO_TEMPLATE_SIZE, Image.LANCZOS)
+    return source
 
 
 def _quantity_to_float(value) -> Optional[float]:
@@ -964,15 +999,19 @@ def _get_source_price_column(cursor) -> str:
     raise RuntimeError("No se encontro una columna de precio en NPV.dbo.NPVFDPreciosVenta.")
 
 
-def _ensure_price_backup_comparison_schema(cursor, price_column: str) -> bool:
+def _ensure_price_backup_comparison_schema(
+    cursor,
+    price_column: str,
+) -> tuple[bool, bool, int]:
     """
-    Prepara el respaldo para comparar la clave ARTICULO + FECHAINICIO.
+    Prepara e inicializa el respaldo usado para comparar precios.
 
-    Devuelve True cuando fue necesario crear o migrar la estructura. Si la
-    tabla no existe se guarda, por articulo, el ultimo precio cuya FECHAINICIO
-    sea estrictamente anterior al dia actual.
+    Si la tabla no existe se crea. Si existe pero esta vacia, se guarda como
+    linea base el precio vigente de cada articulo. Devuelve una tupla con:
+    (estructura_modificada, respaldo_estaba_vacio, filas_inicializadas).
     """
     quoted_price = _quote_sql_identifier(price_column)
+    schema_changed = False
     table_exists = cursor.execute(
         f"SELECT OBJECT_ID(N'{PRICE_BACKUP_TABLE}', N'U')"
     ).fetchval()
@@ -988,8 +1027,114 @@ def _ensure_price_backup_comparison_schema(cursor, price_column: str) -> bool:
                 CAST(GETDATE() AS datetime) AS FECHACOPIA
             INTO {PRICE_BACKUP_TABLE}
             FROM {PRICE_SOURCE_TABLE} AS pv;
+            """
+        )
+        schema_changed = True
 
-            ;WITH Fuente AS (
+    backup_was_empty = not bool(
+        cursor.execute(
+            f"SELECT TOP (1) 1 FROM {PRICE_BACKUP_TABLE} WITH (UPDLOCK, HOLDLOCK)"
+        ).fetchval()
+    )
+
+    start_date_exists = cursor.execute(
+        """
+        SELECT COL_LENGTH(
+            N'NPV.dbo.NPVFDPreciosVentaBkp',
+            N'FECHAINICIO'
+        )
+        """
+    ).fetchval()
+    if start_date_exists is None:
+        # La version anterior del respaldo guardaba el precio y FECHAALTA pero
+        # no FECHAINICIO. Si ya contiene datos, se conserva la instantanea y se
+        # recupera la fecha del registro fuente que mejor coincide.
+        cursor.execute(
+            f"""
+            ALTER TABLE {PRICE_BACKUP_TABLE}
+                ADD FECHAINICIO datetime NULL;
+            """
+        )
+        schema_changed = True
+
+        if not backup_was_empty:
+            cursor.execute(
+                f"""
+                UPDATE b
+                SET FECHAINICIO = origen.FECHAINICIO
+                FROM {PRICE_BACKUP_TABLE} AS b
+                OUTER APPLY (
+                    SELECT TOP (1)
+                        pv.FECHAINICIO
+                    FROM {PRICE_SOURCE_TABLE} AS pv
+                    WHERE pv.ARTICULO = b.ARTICULO
+                    ORDER BY
+                        CASE
+                            WHEN (
+                                pv.FECHAALTA = b.FECHAALTA
+                                OR (pv.FECHAALTA IS NULL AND b.FECHAALTA IS NULL)
+                            )
+                            AND (
+                                pv.{quoted_price} = b.PRECIOVENTA
+                                OR (pv.{quoted_price} IS NULL AND b.PRECIOVENTA IS NULL)
+                            )
+                            THEN 0
+                            WHEN pv.FECHAALTA = b.FECHAALTA THEN 1
+                            WHEN pv.{quoted_price} = b.PRECIOVENTA THEN 2
+                            ELSE 3
+                        END,
+                        CASE
+                            WHEN pv.FECHAINICIO IS NULL OR pv.FECHAINICIO <= GETDATE()
+                            THEN 0 ELSE 1
+                        END,
+                        pv.FECHAINICIO DESC,
+                        pv.FECHAALTA DESC
+                ) AS origen;
+
+                ;WITH LineaBaseHistorica AS (
+                    SELECT
+                        pv.ARTICULO,
+                        pv.{quoted_price} AS PRECIOVENTA,
+                        pv.FECHAINICIO,
+                        pv.FECHAALTA,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY pv.ARTICULO
+                            ORDER BY
+                                pv.FECHAINICIO DESC,
+                                pv.FECHAALTA DESC,
+                                pv.{quoted_price} DESC
+                        ) AS rn
+                    FROM {PRICE_SOURCE_TABLE} AS pv
+                    WHERE pv.FECHAINICIO < CONVERT(date, GETDATE())
+                      AND NOT EXISTS (
+                            SELECT 1
+                            FROM {PRICE_BACKUP_TABLE} AS b
+                            WHERE b.ARTICULO = pv.ARTICULO
+                      )
+                )
+                INSERT INTO {PRICE_BACKUP_TABLE} (
+                    ARTICULO,
+                    PRECIOVENTA,
+                    FECHAINICIO,
+                    FECHAALTA,
+                    FECHACOPIA
+                )
+                SELECT
+                    ARTICULO,
+                    PRECIOVENTA,
+                    FECHAINICIO,
+                    FECHAALTA,
+                    GETDATE()
+                FROM LineaBaseHistorica
+                WHERE rn = 1;
+                """
+            )
+
+    initialized_rows = 0
+    if backup_was_empty:
+        cursor.execute(
+            f"""
+            ;WITH PreciosActuales AS (
                 SELECT
                     pv.ARTICULO,
                     pv.{quoted_price} AS PRECIOVENTA,
@@ -1003,7 +1148,8 @@ def _ensure_price_backup_comparison_schema(cursor, price_column: str) -> bool:
                             pv.{quoted_price} DESC
                     ) AS rn
                 FROM {PRICE_SOURCE_TABLE} AS pv
-                WHERE pv.FECHAINICIO < CONVERT(date, GETDATE())
+                WHERE pv.FECHAINICIO IS NULL
+                   OR pv.FECHAINICIO <= GETDATE()
             )
             INSERT INTO {PRICE_BACKUP_TABLE} (
                 ARTICULO,
@@ -1018,105 +1164,19 @@ def _ensure_price_backup_comparison_schema(cursor, price_column: str) -> bool:
                 FECHAINICIO,
                 FECHAALTA,
                 GETDATE()
-            FROM Fuente
+            FROM PreciosActuales
             WHERE rn = 1;
+
+            SELECT @@ROWCOUNT AS initialized_rows;
             """
         )
-        return True
+        while cursor.description is None:
+            if not cursor.nextset():
+                break
+        row = cursor.fetchone() if cursor.description is not None else None
+        initialized_rows = int(row.initialized_rows or 0) if row else 0
 
-    start_date_exists = cursor.execute(
-        """
-        SELECT COL_LENGTH(
-            N'NPV.dbo.NPVFDPreciosVentaBkp',
-            N'FECHAINICIO'
-        )
-        """
-    ).fetchval()
-    if start_date_exists is not None:
-        return False
-
-    # La version anterior del respaldo guardaba el precio y FECHAALTA pero no
-    # FECHAINICIO. Se conserva esa instantanea y se recupera la fecha del
-    # registro fuente que mejor coincide, de modo que los cambios pendientes
-    # sigan apareciendo despues de actualizar la aplicacion.
-    cursor.execute(
-        f"""
-        ALTER TABLE {PRICE_BACKUP_TABLE}
-            ADD FECHAINICIO datetime NULL;
-        """
-    )
-    cursor.execute(
-        f"""
-        UPDATE b
-        SET FECHAINICIO = origen.FECHAINICIO
-        FROM {PRICE_BACKUP_TABLE} AS b
-        OUTER APPLY (
-            SELECT TOP (1)
-                pv.FECHAINICIO
-            FROM {PRICE_SOURCE_TABLE} AS pv
-            WHERE pv.ARTICULO = b.ARTICULO
-            ORDER BY
-                CASE
-                    WHEN (
-                        pv.FECHAALTA = b.FECHAALTA
-                        OR (pv.FECHAALTA IS NULL AND b.FECHAALTA IS NULL)
-                    )
-                    AND (
-                        pv.{quoted_price} = b.PRECIOVENTA
-                        OR (pv.{quoted_price} IS NULL AND b.PRECIOVENTA IS NULL)
-                    )
-                    THEN 0
-                    WHEN pv.FECHAALTA = b.FECHAALTA THEN 1
-                    WHEN pv.{quoted_price} = b.PRECIOVENTA THEN 2
-                    ELSE 3
-                END,
-                CASE
-                    WHEN pv.FECHAINICIO IS NULL OR pv.FECHAINICIO <= GETDATE()
-                    THEN 0 ELSE 1
-                END,
-                pv.FECHAINICIO DESC,
-                pv.FECHAALTA DESC
-        ) AS origen;
-
-        ;WITH LineaBaseHistorica AS (
-            SELECT
-                pv.ARTICULO,
-                pv.{quoted_price} AS PRECIOVENTA,
-                pv.FECHAINICIO,
-                pv.FECHAALTA,
-                ROW_NUMBER() OVER (
-                    PARTITION BY pv.ARTICULO
-                    ORDER BY
-                        pv.FECHAINICIO DESC,
-                        pv.FECHAALTA DESC,
-                        pv.{quoted_price} DESC
-                ) AS rn
-            FROM {PRICE_SOURCE_TABLE} AS pv
-            WHERE pv.FECHAINICIO < CONVERT(date, GETDATE())
-              AND NOT EXISTS (
-                    SELECT 1
-                    FROM {PRICE_BACKUP_TABLE} AS b
-                    WHERE b.ARTICULO = pv.ARTICULO
-              )
-        )
-        INSERT INTO {PRICE_BACKUP_TABLE} (
-            ARTICULO,
-            PRECIOVENTA,
-            FECHAINICIO,
-            FECHAALTA,
-            FECHACOPIA
-        )
-        SELECT
-            ARTICULO,
-            PRECIOVENTA,
-            FECHAINICIO,
-            FECHAALTA,
-            GETDATE()
-        FROM LineaBaseHistorica
-        WHERE rn = 1;
-        """
-    )
-    return True
+    return schema_changed, backup_was_empty, initialized_rows
 
 
 def _ensure_new_daily_prices_table(cursor, price_column: str) -> bool:
@@ -1150,12 +1210,13 @@ def _ensure_new_daily_prices_table(cursor, price_column: str) -> bool:
 
 def _refresh_new_daily_prices_if_changed(cursor, price_column: str) -> tuple:
     """
-    Reemplaza totalmente la tabla diaria solo cuando hay claves nuevas.
+    Reemplaza totalmente la tabla diaria cuando hay precios nuevos.
 
-    El respaldo contiene el ultimo precio anterior a hoy. La comparacion toma
-    los precios de hoy en adelante que no tengan la misma clave
-    ARTICULO + FECHAINICIO en el respaldo. Si no hay diferencias, el contenido
-    previo de NPVFDPreciosNuevosDiarios permanece intacto.
+    Para cada articulo se toma el precio con la FECHAINICIO mas reciente que
+    no sea posterior al momento actual. Esa fila vigente se compara por
+    ARTICULO, FECHAINICIO y PRECIOVENTA contra el respaldo. Si no hay
+    diferencias, el contenido previo de NPVFDPreciosNuevosDiarios permanece
+    intacto.
     """
     quoted_price = _quote_sql_identifier(price_column)
     cursor.execute(
@@ -1163,18 +1224,31 @@ def _refresh_new_daily_prices_if_changed(cursor, price_column: str) -> tuple:
         SET XACT_ABORT ON;
         BEGIN TRANSACTION;
 
-        ;WITH Fuente AS (
+        ;WITH PreciosVigentes AS (
             SELECT
                 pv.ARTICULO,
                 pv.{quoted_price} AS PRECIOVENTA,
                 pv.FECHAINICIO,
                 pv.FECHAALTA,
                 ROW_NUMBER() OVER (
-                    PARTITION BY pv.ARTICULO, pv.FECHAINICIO
-                    ORDER BY pv.FECHAALTA DESC, pv.{quoted_price} DESC
+                    PARTITION BY pv.ARTICULO
+                    ORDER BY
+                        pv.FECHAINICIO DESC,
+                        pv.FECHAALTA DESC,
+                        pv.{quoted_price} DESC
                 ) AS rn
             FROM {PRICE_SOURCE_TABLE} AS pv
-            WHERE pv.FECHAINICIO >= CONVERT(date, GETDATE())
+            WHERE pv.FECHAINICIO <= GETDATE()
+        ),
+        Fuente AS (
+            SELECT
+                pv.ARTICULO,
+                pv.PRECIOVENTA,
+                pv.FECHAINICIO,
+                pv.FECHAALTA,
+                pv.rn
+            FROM PreciosVigentes AS pv
+            WHERE pv.rn = 1
               AND NOT EXISTS (
                 SELECT 1
                 FROM {PRICE_BACKUP_TABLE} AS b
@@ -1182,6 +1256,10 @@ def _refresh_new_daily_prices_if_changed(cursor, price_column: str) -> tuple:
                   AND (
                         b.FECHAINICIO = pv.FECHAINICIO
                      OR (b.FECHAINICIO IS NULL AND pv.FECHAINICIO IS NULL)
+                  )
+                  AND (
+                        b.PRECIOVENTA = pv.PRECIOVENTA
+                     OR (b.PRECIOVENTA IS NULL AND pv.PRECIOVENTA IS NULL)
                   )
             )
         )
@@ -1328,7 +1406,7 @@ def _load_latest_new_daily_price_items(cursor) -> List[Dict[str, Any]]:
 
 def fetch_new_daily_price_items(cfg: dict = None) -> List[Dict[str, Any]]:
     """
-    Actualiza condicionalmente NPVFDPreciosNuevosDiarios y carga su ultimo lote.
+    Inicializa el respaldo o actualiza los precios nuevos y carga el ultimo lote.
     """
     cfg = cfg or load_config()
     conn = None
@@ -1337,10 +1415,24 @@ def fetch_new_daily_price_items(cfg: dict = None) -> List[Dict[str, Any]]:
         conn = _get_connection(cfg)
         cursor = conn.cursor()
         price_column = _get_source_price_column(cursor)
-        backup_changed = _ensure_price_backup_comparison_schema(cursor, price_column)
+        backup_changed, backup_was_empty, initialized_rows = (
+            _ensure_price_backup_comparison_schema(cursor, price_column)
+        )
         daily_changed = _ensure_new_daily_prices_table(cursor, price_column)
-        if backup_changed or daily_changed:
+        if backup_was_empty:
+            # Al crear la linea base, cualquier lote diario anterior deja de
+            # corresponder con el respaldo y no debe mostrarse como pendiente.
+            cursor.execute(f"DELETE FROM {PRICE_NEW_DAILY_TABLE}")
+
+        if backup_changed or daily_changed or backup_was_empty:
             conn.commit()
+
+        if backup_was_empty:
+            print(
+                "[INFO] Respaldo de precios inicializado: "
+                f"filas={initialized_rows}; no se compararon cambios en esta apertura."
+            )
+            return []
 
         changed_rows, inserted_rows = _refresh_new_daily_prices_if_changed(
             cursor,
@@ -1629,6 +1721,10 @@ def draw_code128_barcode_gdi(
     right: int,
     bar_height: int = 58,
     text_height: int = 20,
+    bar_color: int = 0x000000,
+    text_color: int = 0x000000,
+    background_color: int = 0xFFFFFF,
+    text_weight: int = win32con.FW_NORMAL,
 ) -> int:
     widths = _code128_b_widths(value)
     if not widths:
@@ -1642,19 +1738,26 @@ def draw_code128_barcode_gdi(
     start_x = left + max(0, (available_width - barcode_width) // 2)
     x = start_x + quiet_zone_modules * module_width
 
-    hDC.FillSolidRect((left, top, right, top + bar_height + text_height + 6), 0xFFFFFF)
+    hDC.FillSolidRect(
+        (left, top, right, top + bar_height + text_height + 6),
+        background_color,
+    )
 
     draw_bar = True
     for width in widths:
         segment_width = width * module_width
         if draw_bar:
-            hDC.FillSolidRect((x, top, x + segment_width, top + bar_height), 0x000000)
+            hDC.FillSolidRect((x, top, x + segment_width, top + bar_height), bar_color)
         x += segment_width
         draw_bar = not draw_bar
 
-    font_text = win32ui.CreateFont({"name": "Arial", "height": text_height, "weight": win32con.FW_NORMAL})
+    font_text = win32ui.CreateFont({
+        "name": "Arial",
+        "height": text_height,
+        "weight": text_weight,
+    })
     hDC.SelectObject(font_text)
-    hDC.SetTextColor(0x000000)
+    hDC.SetTextColor(text_color)
     hDC.SetBkMode(win32con.TRANSPARENT)
     hDC.DrawText(
         str(value),
@@ -1737,6 +1840,106 @@ def _description_font_gdi(
         current_height = max(min_height, current_height - 2)
 
 
+def _rgb_to_colorref(rgb: tuple) -> int:
+    """Convierte (R, G, B) al COLORREF usado por GDI de Windows."""
+    red, green, blue = (max(0, min(255, int(value))) for value in rgb)
+    return red | (green << 8) | (blue << 16)
+
+
+def _fitted_font_gdi(
+    hDC,
+    text: str,
+    maximum_height: int,
+    minimum_height: int,
+    available_width: int,
+    font_name: str = "Arial Black",
+):
+    """Selecciona una fuente negrita que cabe horizontalmente en el rectangulo."""
+    current_height = max(1, int(maximum_height))
+    minimum_height = max(1, min(current_height, int(minimum_height)))
+    created_fonts = []
+
+    while True:
+        selected_font = win32ui.CreateFont({
+            "name": font_name,
+            "height": current_height,
+            "weight": win32con.FW_BOLD,
+        })
+        created_fonts.append(selected_font)
+        hDC.SelectObject(selected_font)
+        try:
+            text_width = int(hDC.GetTextExtent(str(text or ""))[0])
+        except Exception:
+            text_width = 0
+        if text_width <= max(1, int(available_width)) or current_height <= minimum_height:
+            return selected_font
+        current_height = max(minimum_height, current_height - max(2, current_height // 18))
+
+
+def _promo_price_fonts_gdi(
+    hDC,
+    currency_text: str,
+    integer_text: str,
+    decimal_text: str,
+    maximum_integer_height: int,
+    minimum_integer_height: int,
+    available_width: int,
+):
+    """Ajusta las tres partes del precio conservando sus proporciones."""
+    integer_height = max(1, int(maximum_integer_height))
+    minimum_integer_height = max(
+        1,
+        min(integer_height, int(minimum_integer_height)),
+    )
+    created_fonts = []
+
+    while True:
+        currency_height = max(10, int(integer_height * 0.55))
+        decimal_height = max(10, int(integer_height * 0.38))
+        currency_font = win32ui.CreateFont({
+            "name": "Arial Black",
+            "height": currency_height,
+            "weight": win32con.FW_BOLD,
+        })
+        integer_font = win32ui.CreateFont({
+            "name": "Arial Black",
+            "height": integer_height,
+            "weight": win32con.FW_BOLD,
+        })
+        decimal_font = win32ui.CreateFont({
+            "name": "Arial Black",
+            "height": decimal_height,
+            "weight": win32con.FW_BOLD,
+        })
+        # Mantener vivas todas las fuentes candidatas evita liberar un objeto
+        # GDI mientras aun se encuentra seleccionado durante el ajuste.
+        created_fonts.extend((currency_font, integer_font, decimal_font))
+        widths = []
+        for price_text, price_font in (
+            (currency_text, currency_font),
+            (integer_text, integer_font),
+            (decimal_text, decimal_font),
+        ):
+            hDC.SelectObject(price_font)
+            try:
+                widths.append(int(hDC.GetTextExtent(price_text)[0]))
+            except Exception:
+                widths.append(0)
+
+        if sum(widths) <= max(1, int(available_width)) or integer_height <= minimum_integer_height:
+            return (
+                currency_font,
+                integer_font,
+                decimal_font,
+                tuple(widths),
+                tuple(created_fonts),
+            )
+        integer_height = max(
+            minimum_integer_height,
+            integer_height - max(2, integer_height // 20),
+        )
+
+
 def _estimate_label_height_dots(
     item_dict: Dict[str, Any],
     config: dict,
@@ -1754,15 +1957,20 @@ def _estimate_label_height_dots(
     minimum_height = _param_int(paper_params, "minimum_height", 180, 1)
     bottom_margin = _param_int(paper_params, "bottom_margin", 4, 0)
 
-    if (
-        section == "normal"
-        and item_dict.get("PRECIO_ESPECIAL")
-        and Image is not None
-        and ImageWin is not None
-        and os.path.exists(get_promo_background_path())
-    ):
-        promo_height = math.ceil(printable_width * PROMO_TEMPLATE_SIZE[1] / PROMO_TEMPLATE_SIZE[0])
-        return max(minimum_height, promo_height)
+    if section == "normal" and item_dict.get("PRECIO_ESPECIAL"):
+        # La oferta usa exactamente el mismo alto que tendria la etiqueta
+        # normal del articulo. El corte se calcula en la aplicacion y no toma
+        # el largo configurado como predeterminado en el controlador.
+        regular_item = dict(item_dict)
+        regular_item["PRECIO_ESPECIAL"] = ""
+        regular_item["TIENE_PRECIO_ESPECIAL"] = False
+        return _estimate_label_height_dots(
+            regular_item,
+            config,
+            printable_width,
+            section,
+            auto_individual_print=auto_individual_print,
+        )
 
     params = _print_layout_section(config, section)
     y_pos = _param_int(params, "top_y", 0, 0)
@@ -1976,9 +2184,13 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int, c
 
     try:
         with Image.open(bg_path) as bg:
-            bg = bg.convert("RGB")
-            img_w, img_h = bg.size
-            printable_height = int(printable_width * img_h / img_w)
+            bg = _compose_compact_promo_background(bg)
+            printable_height = _estimate_label_height_dots(
+                item_dict,
+                config or {},
+                printable_width,
+                "normal",
+            )
             bg_resized = bg.resize((printable_width, printable_height), Image.LANCZOS)
             dib = ImageWin.Dib(bg_resized)
             dib.draw(hDC.GetHandleOutput(), (0, 0, printable_width, printable_height))
@@ -1986,59 +2198,354 @@ def draw_promo_label_gdi(hDC, item_dict: Dict[str, Any], printable_width: int, c
         print(f"[ERROR] Fallo al cargar imagen de fondo: {e}")
         return False
 
-    # IMPORTANTE: Usar PROMO_TEMPLATE_SIZE para el escalado de coordenadas de texto
-    design_w, design_h = PROMO_TEMPLATE_SIZE
-    sx = printable_width / design_w
-    sy = printable_height / design_h
+    design_width, design_height = PROMO_TEMPLATE_SIZE
+    sx = printable_width / design_width
+    sy = printable_height / design_height
 
     def rect(left, top, right, bottom):
-        return (int(left * sx), int(top * sy), int(right * sx), int(bottom * sy))
+        return (
+            int(left * sx),
+            int(top * sy),
+            int(right * sx),
+            int(bottom * sy),
+        )
 
-    def font_height(px):
-        return max(12, int(px * sy))
+    def font_height(value):
+        return max(12, int(value * sy))
 
-    precio = item_dict.get("PRECIO", "$0.00")
+    precio = _format_currency(item_dict.get("PRECIO", "$0.00"))
     precio_especial = item_dict.get("PRECIO_ESPECIAL", "")
-    
-    ahorro_val = max(0, (_price_to_float(precio) or 0) - (_price_to_float(precio_especial) or 0))
-    texto_ahorro = _promo_price_text(ahorro_val)
-    texto_ahora = _promo_price_text(precio_especial)
-    texto_antes = _promo_price_text(precio)
-    promo_terminos = item_dict.get("PROMO_TERMINOS", "")
-    promo_terminos2 = item_dict.get("PROMO_TERMINOS2", "")
+    currency, integer, decimals = _promo_price_parts(precio_especial)
+    main_price_text = f"{currency}{integer}"
+    ahorro_val = max(
+        0,
+        (_price_to_float(precio) or 0) - (_price_to_float(precio_especial) or 0),
+    )
+    texto_antes = _format_currency(precio)
+    texto_ahorro = f"AHORRA {_format_currency(ahorro_val)}"
+    description_lines = _promo_description_lines(item_dict.get("DESCRIPCION"))
 
-    hDC.SetTextColor(0x111111) # Color oscuro para el texto
-    hDC.SetBkColor(0xFFFFFF)
-    hDC.SetBkMode(win32con.OPAQUE)
+    background = _rgb_to_colorref(PROMO_COLOR_BACKGROUND)
+    dark = _rgb_to_colorref(PROMO_COLOR_DARK)
+    panel = _rgb_to_colorref(PROMO_COLOR_PANEL)
+    light = _rgb_to_colorref(PROMO_COLOR_LIGHT)
 
-    font_savings = win32ui.CreateFont({"name": "Arial", "height": font_height(100), "weight": win32con.FW_BOLD})
-    hDC.SelectObject(font_savings)
-    hDC.DrawText(texto_ahorro, rect(1010, 65, 1480, 205), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-
-    font_now = win32ui.CreateFont({"name": "Arial", "height": font_height(166), "weight": win32con.FW_BOLD})
-    hDC.SelectObject(font_now)
-    hDC.DrawText(texto_ahora, rect(340, 315, 1480, 500), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-
-    font_before = win32ui.CreateFont({"name": "Arial", "height": font_height(66), "weight": win32con.FW_BOLD})
-    hDC.SelectObject(font_before)
-    hDC.DrawText(texto_antes, rect(1010, 715, 1410, 815), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-
+    # Se borran solamente los datos de ejemplo; las formas y los colores de
+    # la plantilla (titulo, etiqueta, OFERTA y panel curvo) permanecen intactos.
+    hDC.FillSolidRect(rect(132, 60, 565, 320), background)
+    hDC.FillSolidRect(rect(42, 120, 565, 320), background)
+    hDC.FillSolidRect(rect(62, 316, 560, 376), background)
+    hDC.FillSolidRect(rect(615, 284, 884, 362), panel)
+    hDC.FillSolidRect(rect(42, 384, 903, 452), dark)
     hDC.SetBkMode(win32con.TRANSPARENT)
 
-    desc = (item_dict.get("DESCRIPCION") or "").upper()
-    if desc:
-        font_desc = win32ui.CreateFont({"name": "Arial", "height": font_height(PROMO_DESCRIPTION_FONT_SIZE), "weight": win32con.FW_BOLD})
-        hDC.SelectObject(font_desc)
-        hDC.DrawText(desc, rect(80, 528, 1505, 605), win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+    # Precio nuevo: enteros grandes y centavos menores, ambos con dos
+    # decimales y alineados sobre la misma base.
+    price_left, price_top, price_right, price_bottom = rect(48, 62, 558, 315)
+    available_price_width = price_right - price_left
+    main_height = font_height(250)
+    decimal_height = font_height(105)
+    minimum_main_height = font_height(105)
+    minimum_decimal_height = font_height(50)
+    while True:
+        main_font = win32ui.CreateFont({
+            "name": "Arial",
+            "height": main_height,
+            "weight": win32con.FW_BOLD,
+        })
+        decimal_font = win32ui.CreateFont({
+            "name": "Arial",
+            "height": decimal_height,
+            "weight": win32con.FW_BOLD,
+        })
+        hDC.SelectObject(main_font)
+        main_width = hDC.GetTextExtent(main_price_text)[0]
+        hDC.SelectObject(decimal_font)
+        decimal_width = hDC.GetTextExtent(decimals)[0]
+        if main_width + decimal_width <= available_price_width or main_height <= minimum_main_height:
+            break
+        next_main_height = max(minimum_main_height, main_height - max(2, main_height // 18))
+        ratio = next_main_height / main_height
+        main_height = next_main_height
+        decimal_height = max(minimum_decimal_height, int(decimal_height * ratio))
 
-    if promo_terminos:
-        font_terms = win32ui.CreateFont({"name": "Arial", "height": font_height(28), "weight": win32con.FW_BOLD})
-        hDC.SelectObject(font_terms)
-        hDC.DrawText(promo_terminos, rect(95, 865, 1490, 900), win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
-        if promo_terminos2:
-            hDC.DrawText(promo_terminos2, rect(95, 900, 1490, 960), win32con.DT_LEFT | win32con.DT_WORDBREAK)
+    price_start = price_left + max(0, (available_price_width - main_width - decimal_width) // 2)
+    hDC.SetTextColor(dark)
+    hDC.SelectObject(main_font)
+    try:
+        main_descent = int(hDC.GetTextMetrics().get("tmDescent", 0))
+    except Exception:
+        main_descent = max(0, int(main_height * 0.19))
+    hDC.DrawText(
+        main_price_text,
+        (price_start, price_top, price_start + main_width + 2, price_bottom),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_BOTTOM,
+    )
+    hDC.SelectObject(decimal_font)
+    try:
+        decimal_descent = int(hDC.GetTextMetrics().get("tmDescent", 0))
+    except Exception:
+        decimal_descent = max(0, int(decimal_height * 0.19))
+    # DT_BOTTOM alinea la caja, no la linea base. El ajuste por la diferencia
+    # de descensos evita que los centavos queden mas abajo que los enteros.
+    decimal_bottom = price_bottom - max(0, main_descent - decimal_descent)
+    hDC.DrawText(
+        decimals,
+        (price_start + main_width, price_top, price_right, decimal_bottom),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_BOTTOM,
+    )
 
-    draw_print_area_dividers(hDC, printable_width, config=config)
+    if description_lines:
+        description_rect = rect(66, 316, 560, 376)
+        description_design_size = 38 if len(description_lines) == 1 else 29
+        description_line_height = font_height(description_design_size)
+        description_font = win32ui.CreateFont({
+            "name": "Arial",
+            "height": description_line_height,
+            "weight": win32con.FW_BOLD,
+        })
+        hDC.SelectObject(description_font)
+        total_height = description_line_height * len(description_lines)
+        description_top = description_rect[1] + max(
+            0,
+            (description_rect[3] - description_rect[1] - total_height) // 2,
+        )
+        for index, line in enumerate(description_lines):
+            line_top = description_top + index * description_line_height
+            hDC.DrawText(
+                line,
+                (
+                    description_rect[0],
+                    line_top,
+                    description_rect[2],
+                    line_top + description_line_height,
+                ),
+                win32con.DT_CENTER
+                | win32con.DT_SINGLELINE
+                | win32con.DT_VCENTER
+                | win32con.DT_END_ELLIPSIS,
+            )
+
+    previous_rect = rect(625, 288, 878, 350)
+    previous_font = _fitted_font_gdi(
+        hDC,
+        texto_antes,
+        font_height(66),
+        font_height(38),
+        previous_rect[2] - previous_rect[0],
+    )
+    hDC.SetTextColor(light)
+    hDC.SelectObject(previous_font)
+    hDC.DrawText(
+        texto_antes,
+        previous_rect,
+        win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER,
+    )
+    hDC.FillSolidRect(rect(638, 350, 872, 355), light)
+
+    savings_rect = rect(50, 386, 895, 451)
+    savings_font = _fitted_font_gdi(
+        hDC,
+        texto_ahorro,
+        font_height(70),
+        font_height(42),
+        savings_rect[2] - savings_rect[0],
+    )
+    hDC.SelectObject(savings_font)
+    hDC.DrawText(
+        texto_ahorro,
+        savings_rect,
+        win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER,
+    )
+    hDC.SetTextColor(dark)
+    return True
+
+
+def draw_regular_label_gdi(
+    hDC,
+    item_dict: Dict[str, Any],
+    printable_width: int,
+    config: dict = None,
+) -> bool:
+    """Dibuja la etiqueta normal con el formato Precio regular."""
+    if item_dict.get("PRECIO_ESPECIAL"):
+        return False
+
+    design_width, design_height = REGULAR_TEMPLATE_SIZE
+    # Conserva el alto fisico del formato normal original. El nuevo diseno se
+    # adapta dentro de ese espacio y no modifica la etiqueta angosta.
+    printable_height = _estimate_label_height_dots(
+        item_dict,
+        config or {},
+        printable_width,
+        "normal",
+    )
+    sx = printable_width / design_width
+    sy = printable_height / design_height
+
+    def rect(left, top, right, bottom):
+        return (
+            int(left * sx),
+            int(top * sy),
+            int(right * sx),
+            int(bottom * sy),
+        )
+
+    def font_height(value):
+        return max(12, int(value * sy))
+
+    background = _rgb_to_colorref(REGULAR_COLOR_BACKGROUND)
+    dark = _rgb_to_colorref(REGULAR_COLOR_DARK)
+    hDC.FillSolidRect((0, 0, printable_width, printable_height), background)
+    hDC.SetBkMode(win32con.TRANSPARENT)
+    hDC.SetTextColor(dark)
+
+    title_font = win32ui.CreateFont({
+        "name": "Arial Black",
+        "height": font_height(50),
+        "weight": win32con.FW_BOLD,
+    })
+    hDC.SelectObject(title_font)
+    hDC.DrawText(
+        "Precio",
+        rect(36, 20, 230, 74),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER,
+    )
+    hDC.DrawText(
+        "regular",
+        rect(36, 64, 230, 118),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER,
+    )
+
+    currency, integer, decimals = _promo_price_parts(item_dict.get("PRECIO"))
+    # Se aprovecha todo el ancho disponible sin alterar el alto de la etiqueta.
+    # El precio conserva ajuste automatico para importes de varios digitos.
+    price_left, price_top, price_right, price_bottom = rect(230, 0, 910, 282)
+    currency_font, integer_font, decimal_font, widths, _price_font_candidates = _promo_price_fonts_gdi(
+        hDC,
+        currency,
+        integer,
+        decimals,
+        font_height(325),
+        font_height(140),
+        price_right - price_left,
+    )
+    currency_width, integer_width, decimal_width = widths
+    price_start = price_left + max(
+        0,
+        (price_right - price_left - sum(widths)) // 2,
+    )
+
+    hDC.SelectObject(integer_font)
+    try:
+        integer_descent = int(hDC.GetTextMetrics().get("tmDescent", 0))
+    except Exception:
+        integer_descent = font_height(45)
+    hDC.DrawText(
+        integer,
+        (
+            price_start + currency_width,
+            price_top,
+            price_start + currency_width + integer_width + 2,
+            price_bottom,
+        ),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_BOTTOM,
+    )
+
+    hDC.SelectObject(decimal_font)
+    try:
+        decimal_descent = int(hDC.GetTextMetrics().get("tmDescent", 0))
+    except Exception:
+        decimal_descent = font_height(15)
+    decimal_bottom = price_bottom - max(0, integer_descent - decimal_descent)
+    hDC.DrawText(
+        decimals,
+        (
+            price_start + currency_width + integer_width,
+            price_top,
+            price_right,
+            decimal_bottom,
+        ),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_BOTTOM,
+    )
+
+    hDC.SelectObject(currency_font)
+    hDC.DrawText(
+        currency,
+        (
+            price_start,
+            price_top,
+            price_start + currency_width + 2,
+            price_bottom - font_height(35),
+        ),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_BOTTOM,
+    )
+
+    description_lines = _promo_description_lines(
+        item_dict.get("DESCRIPCION"),
+        single_line_limit=30,
+    )
+    if description_lines:
+        description_rect = rect(90, 274, 855, 316)
+        description_design_size = 42 if len(description_lines) == 1 else 26
+        description_line_height = font_height(description_design_size)
+        description_font = win32ui.CreateFont({
+            "name": "Arial Black",
+            "height": description_line_height,
+            "weight": win32con.FW_BOLD,
+        })
+        hDC.SelectObject(description_font)
+        total_height = description_line_height * len(description_lines)
+        description_top = description_rect[1] + max(
+            0,
+            (description_rect[3] - description_rect[1] - total_height) // 2,
+        )
+        for index, line in enumerate(description_lines):
+            line_top = description_top + index * description_line_height
+            hDC.DrawText(
+                line,
+                (
+                    description_rect[0],
+                    line_top,
+                    description_rect[2],
+                    line_top + description_line_height,
+                ),
+                win32con.DT_CENTER
+                | win32con.DT_SINGLELINE
+                | win32con.DT_VCENTER
+                | win32con.DT_END_ELLIPSIS,
+            )
+
+    barcode_value = _barcode_value_for_item(item_dict)
+    if barcode_value:
+        draw_code128_barcode_gdi(
+            hDC,
+            barcode_value,
+            int(75 * sx),
+            int(320 * sy),
+            int(870 * sx),
+            bar_height=max(1, int(96 * sy)),
+            text_height=max(10, int(40 * sy)),
+            bar_color=dark,
+            text_color=dark,
+            background_color=background,
+            text_weight=win32con.FW_BOLD,
+        )
+
+    # Se vuelve a dibujar el encabezado al final para mantenerlo legible aun
+    # cuando un importe largo obliga a crear varias fuentes de ajuste GDI.
+    hDC.SelectObject(title_font)
+    hDC.DrawText(
+        "Precio",
+        rect(36, 20, 230, 74),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER,
+    )
+    hDC.DrawText(
+        "regular",
+        rect(36, 64, 230, 118),
+        win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER,
+    )
+
     return True
 
 
@@ -2070,6 +2577,11 @@ def print_label_gdi(item_dict: Dict[str, Any], config: dict, copies: int = 1, sh
             hDC.StartPage()
 
             if draw_promo_label_gdi(hDC, item_dict, printable_width, config):
+                hDC.EndPage()
+                hDC.EndDoc()
+                continue
+
+            if draw_regular_label_gdi(hDC, item_dict, printable_width, config):
                 hDC.EndPage()
                 hDC.EndDoc()
                 continue
@@ -2843,11 +3355,14 @@ class LabelPrintPreviewWindow(tk.Toplevel):
 
         label_width = 500 if individual else 660
         if self.item.get("PRECIO_ESPECIAL"):
-            label_height = int(label_width * PROMO_TEMPLATE_SIZE[1] / PROMO_TEMPLATE_SIZE[0])
+            # La vista previa conserva el mismo lienzo que la etiqueta normal.
+            label_height = 280
+        elif not individual:
+            label_height = 280
         else:
             # La vista previa refleja el formato compacto sin cabecera ni
             # linea de corte superior.
-            label_height = 232 if individual else 280
+            label_height = 232
         window_width = label_width + 60
         window_height = label_height + 95
         self.geometry(f"{window_width}x{window_height}")
@@ -2892,6 +3407,10 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         right: float,
         bar_height: float,
         text_size: int,
+        bar_color: str = "#111111",
+        text_color: str = "#111111",
+        background_color: str = "#FFFFFF",
+        text_bold: bool = False,
     ) -> float:
         widths = _code128_b_widths(value)
         if not widths:
@@ -2904,13 +3423,27 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         barcode_width = total_modules * module_width
         x = left + max(0, (available_width - barcode_width) / 2) + quiet_zone_modules * module_width
 
-        self.canvas.create_rectangle(left, top, right, top + bar_height + text_size + 8, fill="#FFFFFF", outline="")
+        self.canvas.create_rectangle(
+            left,
+            top,
+            right,
+            top + bar_height + text_size + 8,
+            fill=background_color,
+            outline="",
+        )
 
         draw_bar = True
         for width in widths:
             segment_width = width * module_width
             if draw_bar:
-                self.canvas.create_rectangle(x, top, x + segment_width, top + bar_height, fill="#111111", outline="")
+                self.canvas.create_rectangle(
+                    x,
+                    top,
+                    x + segment_width,
+                    top + bar_height,
+                    fill=bar_color,
+                    outline="",
+                )
             x += segment_width
             draw_bar = not draw_bar
 
@@ -2919,8 +3452,8 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             top + bar_height + 4,
             text=str(value),
             anchor="n",
-            font=("Arial", text_size),
-            fill="#111111",
+            font=("Arial", text_size, "bold" if text_bold else "normal"),
+            fill=text_color,
         )
         return bar_height + text_size + 8
 
@@ -2929,7 +3462,8 @@ class LabelPrintPreviewWindow(tk.Toplevel):
         self._promo_photo = None
 
         if self.item.get("PRECIO_ESPECIAL") and Image is not None and ImageTk is not None and os.path.exists(get_promo_background_path()):
-            bg = Image.open(get_promo_background_path()).convert("RGB")
+            with Image.open(get_promo_background_path()) as source_bg:
+                bg = _compose_compact_promo_background(source_bg)
             bg = bg.resize((label_width, label_height), Image.LANCZOS)
             self._promo_photo = ImageTk.PhotoImage(bg)
             self.canvas.create_image(0, 0, image=self._promo_photo, anchor="nw")
@@ -2944,73 +3478,266 @@ class LabelPrintPreviewWindow(tk.Toplevel):
             def cy(value):
                 return value * sy
 
-            price = self.item.get("PRECIO") or "$0.00"
+            price = _format_currency(self.item.get("PRECIO") or "$0.00")
             special_price = self.item.get("PRECIO_ESPECIAL") or ""
-            ahorro_val = max(0, (_price_to_float(price) or 0) - (_price_to_float(special_price) or 0))
-            
-            texto_ahorro = _promo_price_text(ahorro_val)
-            texto_ahora = _promo_price_text(special_price)
-            texto_antes = _promo_price_text(price)
+            currency, integer, decimals = _promo_price_parts(special_price)
+            main_price_text = f"{currency}{integer}"
+            ahorro_val = max(
+                0,
+                (_price_to_float(price) or 0) - (_price_to_float(special_price) or 0),
+            )
+            texto_antes = _format_currency(price)
+            texto_ahorro = f"AHORRA {_format_currency(ahorro_val)}"
+            description_lines = _promo_description_lines(self.item.get("DESCRIPCION"))
 
-            desc = (self.item.get("DESCRIPCION") or "").upper()
-            promo_terminos = self.item.get("PROMO_TERMINOS") or ""
-            promo_terminos2 = self.item.get("PROMO_TERMINOS2") or ""
+            background = "#FDFEFF"
+            dark = "#002221"
+            panel = "#424645"
+            light = "#FDFEFF"
 
-            # AHORRA
-            self.canvas.create_rectangle(cx(1010), cy(65), cx(1480), cy(205), fill="#FFFFFF", outline="")
+            self.canvas.create_rectangle(cx(132), cy(60), cx(565), cy(320), fill=background, outline="")
+            self.canvas.create_rectangle(cx(42), cy(120), cx(565), cy(320), fill=background, outline="")
+            self.canvas.create_rectangle(cx(62), cy(316), cx(560), cy(376), fill=background, outline="")
+            self.canvas.create_rectangle(cx(615), cy(284), cx(884), cy(362), fill=panel, outline="")
+            self.canvas.create_rectangle(cx(42), cy(384), cx(903), cy(452), fill=dark, outline="")
+
+            self._promo_fonts = []
+            main_size = max(1, int(250 * sy))
+            decimal_size = max(1, int(105 * sy))
+            minimum_main_size = max(1, int(105 * sy))
+            minimum_decimal_size = max(1, int(50 * sy))
+            available_width = cx(558) - cx(48)
+            while True:
+                main_font = font.Font(root=self, family="Arial", size=-main_size, weight="bold")
+                decimal_font = font.Font(root=self, family="Arial", size=-decimal_size, weight="bold")
+                main_width = main_font.measure(main_price_text)
+                decimal_width = decimal_font.measure(decimals)
+                if main_width + decimal_width <= available_width or main_size <= minimum_main_size:
+                    break
+                next_main_size = max(minimum_main_size, main_size - max(2, main_size // 18))
+                ratio = next_main_size / main_size
+                main_size = next_main_size
+                decimal_size = max(minimum_decimal_size, int(decimal_size * ratio))
+            self._promo_fonts.extend((main_font, decimal_font))
+            price_start = cx(48) + max(0, (available_width - main_width - decimal_width) / 2)
+            price_baseline = cy(315)
             self.canvas.create_text(
-                cx(1245), cy(135), text=texto_ahorro, anchor="center",
-                font=("Arial", -max(1, int(100 * sy)), "bold"), fill="#111111"
+                price_start,
+                price_baseline,
+                text=main_price_text,
+                anchor="sw",
+                font=main_font,
+                fill=dark,
+            )
+            decimal_baseline = price_baseline - max(
+                0,
+                main_font.metrics("descent") - decimal_font.metrics("descent"),
+            )
+            self.canvas.create_text(
+                price_start + main_width,
+                decimal_baseline,
+                text=decimals,
+                anchor="sw",
+                font=decimal_font,
+                fill=dark,
             )
 
-            # PRECIO NUEVO
-            self.canvas.create_rectangle(cx(340), cy(315), cx(1480), cy(500), fill="#FFFFFF", outline="")
-            self.canvas.create_text(
-                cx(910), cy(407), text=texto_ahora, anchor="center",
-                font=("Arial", -max(1, int(166 * sy)), "bold"), fill="#111111"
-            )
-
-            # PRECIO ANTERIOR
-            self.canvas.create_rectangle(cx(1010), cy(715), cx(1410), cy(815), fill="#FFFFFF", outline="")
-            self.canvas.create_text(
-                cx(1210), cy(765), text=texto_antes, anchor="center",
-                font=("Arial", -max(1, int(66 * sy)), "bold"), fill="#111111"
-            )
-
-            if desc:
-                self.canvas.create_text(
-                    cx(792),
-                    cy(563),
-                    text=desc,
-                    width=cx(1425),
-                    anchor="center",
-                    justify="center",
-                    font=("Arial", -max(10, int(PROMO_DESCRIPTION_FONT_SIZE * sy)), "bold"),
-                    fill="#111111",
-                )
-
-            if promo_terminos:
-                self.canvas.create_text(
-                    cx(95),
-                    cy(865),
-                    text=promo_terminos,
-                    width=cx(1395),
-                    anchor="nw",
-                    justify="left",
-                    font=("Arial", -max(9, int(28 * sy)), "bold"),
-                    fill="#111111",
-                )
-                if promo_terminos2:
+            if description_lines:
+                description_design_size = 38 if len(description_lines) == 1 else 29
+                description_line_height = description_design_size * sy
+                description_center = cy((316 + 376) / 2)
+                description_top = description_center - description_line_height * len(description_lines) / 2
+                for index, line in enumerate(description_lines):
                     self.canvas.create_text(
-                        cx(95),
-                        cy(900),
-                        text=promo_terminos2,
-                        width=cx(1395),
-                        anchor="nw",
-                        justify="left",
-                        font=("Arial", -max(9, int(28 * sy)), "bold"),
-                        fill="#111111",
+                        cx((66 + 560) / 2),
+                        description_top + (index + 0.5) * description_line_height,
+                        text=line,
+                        width=cx(560) - cx(66),
+                        anchor="center",
+                        justify="center",
+                        font=("Arial", -max(1, int(description_design_size * sy)), "bold"),
+                        fill=dark,
                     )
+
+            previous_design_size = max(38, 66 - max(0, len(texto_antes) - 7) * 5)
+            self.canvas.create_text(
+                cx((625 + 878) / 2),
+                cy((288 + 350) / 2),
+                text=texto_antes,
+                anchor="center",
+                font=("Arial", -max(1, int(previous_design_size * sy)), "bold"),
+                fill=light,
+            )
+            self.canvas.create_rectangle(cx(638), cy(350), cx(872), cy(355), fill=light, outline="")
+
+            savings_design_size = max(42, 70 - max(0, len(texto_ahorro) - 13) * 4)
+            self.canvas.create_text(
+                cx((50 + 895) / 2),
+                cy((386 + 451) / 2),
+                text=texto_ahorro,
+                anchor="center",
+                font=("Arial", -max(1, int(savings_design_size * sy)), "bold"),
+                fill=light,
+            )
+
+            return
+
+        if not self.individual:
+            design_width, design_height = REGULAR_TEMPLATE_SIZE
+            sx = label_width / design_width
+            sy = label_height / design_height
+
+            def cx(value):
+                return value * sx
+
+            def cy(value):
+                return value * sy
+
+            background = "#FDFEFF"
+            dark = "#002221"
+            self.canvas.create_rectangle(
+                0,
+                0,
+                label_width,
+                label_height,
+                fill=background,
+                outline="",
+            )
+
+            title_size = max(1, int(50 * sy))
+            self.canvas.create_text(
+                cx(36),
+                cy((20 + 74) / 2),
+                text="Precio",
+                anchor="w",
+                font=("Arial Black", -title_size, "bold"),
+                fill=dark,
+            )
+            self.canvas.create_text(
+                cx(36),
+                cy((64 + 118) / 2),
+                text="regular",
+                anchor="w",
+                font=("Arial Black", -title_size, "bold"),
+                fill=dark,
+            )
+
+            currency, integer, decimals = _promo_price_parts(
+                self.item.get("PRECIO")
+            )
+            self._regular_fonts = []
+            integer_size = max(1, int(325 * sy))
+            minimum_integer_size = max(1, int(140 * sy))
+            available_width = cx(910) - cx(230)
+            while True:
+                currency_size = max(10, int(integer_size * 0.55))
+                decimal_size = max(10, int(integer_size * 0.38))
+                currency_font = font.Font(
+                    root=self,
+                    family="Arial Black",
+                    size=-currency_size,
+                    weight="bold",
+                )
+                integer_font = font.Font(
+                    root=self,
+                    family="Arial Black",
+                    size=-integer_size,
+                    weight="bold",
+                )
+                decimal_font = font.Font(
+                    root=self,
+                    family="Arial Black",
+                    size=-decimal_size,
+                    weight="bold",
+                )
+                widths = (
+                    currency_font.measure(currency),
+                    integer_font.measure(integer),
+                    decimal_font.measure(decimals),
+                )
+                if sum(widths) <= available_width or integer_size <= minimum_integer_size:
+                    break
+                integer_size = max(
+                    minimum_integer_size,
+                    integer_size - max(2, integer_size // 20),
+                )
+            self._regular_fonts.extend(
+                (currency_font, integer_font, decimal_font)
+            )
+            currency_width, integer_width, decimal_width = widths
+            price_start = cx(230) + max(0, (available_width - sum(widths)) / 2)
+            price_baseline = cy(282)
+            self.canvas.create_text(
+                price_start + currency_width,
+                price_baseline,
+                text=integer,
+                anchor="sw",
+                font=integer_font,
+                fill=dark,
+            )
+            decimal_baseline = price_baseline - max(
+                0,
+                integer_font.metrics("descent") - decimal_font.metrics("descent"),
+            )
+            self.canvas.create_text(
+                price_start + currency_width + integer_width,
+                decimal_baseline,
+                text=decimals,
+                anchor="sw",
+                font=decimal_font,
+                fill=dark,
+            )
+            self.canvas.create_text(
+                price_start,
+                price_baseline - cy(35),
+                text=currency,
+                anchor="sw",
+                font=currency_font,
+                fill=dark,
+            )
+
+            description_lines = _promo_description_lines(
+                self.item.get("DESCRIPCION"),
+                single_line_limit=30,
+            )
+            if description_lines:
+                description_design_size = 42 if len(description_lines) == 1 else 26
+                description_line_height = description_design_size * sy
+                description_center = cy((274 + 316) / 2)
+                description_top = (
+                    description_center
+                    - description_line_height * len(description_lines) / 2
+                )
+                for index, line in enumerate(description_lines):
+                    self.canvas.create_text(
+                        cx((90 + 855) / 2),
+                        description_top + (index + 0.5) * description_line_height,
+                        text=line,
+                        width=cx(855) - cx(90),
+                        anchor="center",
+                        justify="center",
+                        font=(
+                            "Arial Black",
+                            -max(1, int(description_design_size * sy)),
+                            "bold",
+                        ),
+                        fill=dark,
+                    )
+
+            barcode_value = _barcode_value_for_item(self.item)
+            if barcode_value:
+                self._draw_code128_barcode_canvas(
+                    barcode_value,
+                    cx(75),
+                    cy(320),
+                    cx(870),
+                    cy(416) - cy(320),
+                    max(10, int(40 * sy)),
+                    bar_color=dark,
+                    text_color=dark,
+                    background_color=background,
+                    text_bold=True,
+                )
 
             return
 
@@ -3150,7 +3877,7 @@ class App(ThemedTk):
         self.populate_printers()
         self.refresh_default_printer_note()
         self._show_config_load_warnings()
-        self.after(500, self._check_new_prices_on_startup)
+        self.after(500, self._validate_new_prices_on_startup)
 
     def configure_styles(self):
         style = ttk.Style(self)
@@ -3571,9 +4298,20 @@ class App(ThemedTk):
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Error en impresión de prueba: {e}")
 
-    def _check_new_prices_on_startup(self):
-        if self.winfo_exists():
-            self.on_new_prices_print_click(show_empty=False)
+    def _validate_new_prices_on_startup(self):
+        """Actualiza precios nuevos al iniciar sin abrir ventanas secundarias."""
+        if not self.winfo_exists():
+            return
+        try:
+            items = fetch_new_daily_price_items(self.config_data)
+            print(
+                "[INFO] Validacion silenciosa de precios completada: "
+                f"pendientes={len(items)}."
+            )
+        except Exception as e:
+            # El inicio debe conservar visible solamente la ventana principal.
+            # El boton Precios Nuevos volvera a intentar y mostrara el error.
+            write_log("ERROR _validate_new_prices_on_startup", e)
 
     def on_new_prices_print_click(self, show_empty: bool = True):
         try:
@@ -3714,13 +4452,34 @@ class App(ThemedTk):
             return False
         return True
 
+    def _confirm_special_price_print(self, item: Dict[str, Any]) -> bool:
+        """Pregunta si se imprime la oferta; No conserva el precio normal."""
+        if not self._item_has_special_price(item):
+            return False
+
+        normal_price = _format_currency(item.get("PRECIO") or "$0.00")
+        special_price = _format_currency(item.get("PRECIO_ESPECIAL") or "$0.00")
+        print_special = messagebox.askyesno(
+            APP_TITLE,
+            "El articulo tiene un precio especial vigente.\n\n"
+            f"Precio normal: {normal_price}\n"
+            f"Precio especial: {special_price}\n\n"
+            "¿Deseas imprimir la etiqueta de precio especial?\n\n"
+            "Si eliges No, se imprimira la etiqueta con el precio normal.",
+            parent=self,
+            default=messagebox.YES,
+            icon=messagebox.QUESTION,
+        )
+        self.special_price_print_var.set(bool(print_special))
+        return bool(print_special)
+
     def on_print_click(self):
         item = self._collect_item_from_preview()
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             messagebox.showwarning(APP_TITLE, "No se puede imprimir sin Producto y Precio.")
             return
         individual_print = self._is_individual_print_enabled()
-        special_price_print = self._is_special_price_print_enabled()
+        special_price_print = self._confirm_special_price_print(item)
         if special_price_print and not self._validate_special_price(item):
             return
         try:
@@ -3759,6 +4518,10 @@ class App(ThemedTk):
         )
 
     def _print_item_silent(self, item: Dict[str, Any], individual_print: bool, special_price_print: bool):
+        if self._item_has_special_price(item):
+            special_price_print = self._confirm_special_price_print(item)
+            if special_price_print and not self._validate_special_price(item):
+                return
         item = self._item_for_silent_print(item, individual_print, special_price_print)
         if not item.get("DESCRIPCION") or not item.get("PRECIO"):
             return
